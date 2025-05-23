@@ -20,17 +20,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         window = UIWindow(frame: UIScreen.main.bounds)
-        cameraController.groupIDs = [Constants.partnerGroupId]
-        if #available(iOS 13.0, *) {
-            window?.overrideUserInterfaceStyle = .dark
-        }
-
-        cameraController.snapchatDelegate = self
-        let cameraViewController = CameraViewController(cameraController: cameraController)
-        cameraViewController.appOrientationDelegate = self
-        window?.rootViewController = cameraViewController
+        
+        // Tampilkan SplashViewController terlebih dahulu
+        let splashVC = SplashViewController()
+        window?.rootViewController = splashVC
         window?.makeKeyAndVisible()
-
+        
+        // Setelah 3 detik, tampilkan CameraViewController
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self = self else { return }
+            self.cameraController.groupIDs = [Constants.partnerGroupId]
+            if #available(iOS 13.0, *) {
+                self.window?.overrideUserInterfaceStyle = .dark
+            }
+            self.cameraController.snapchatDelegate = self
+            let cameraViewController = CameraViewController(cameraController: self.cameraController)
+            cameraViewController.appOrientationDelegate = self
+            self.window?.rootViewController = cameraViewController
+        }
         return true
     }
     
