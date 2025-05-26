@@ -9,7 +9,7 @@ import SCSDKCreativeKit
 class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
 
     private enum Constants {
-        static let partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // 845fe30b-b436-42a7-be3c-2da1c3390aa6
+        static var partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // default
     }
 
     var window: UIWindow?
@@ -21,23 +21,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         window = UIWindow(frame: UIScreen.main.bounds)
         
-        // Tampilkan SplashViewController terlebih dahulu
-        let splashVC = SplashViewController()
-        window?.rootViewController = splashVC
+        // Langsung tampilkan LicenseInputViewController
+        let licenseVC = LicenseInputViewController()
+        licenseVC.delegate = self
+        window?.rootViewController = licenseVC
         window?.makeKeyAndVisible()
         
-        // Setelah 3 detik, tampilkan CameraViewController
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            guard let self = self else { return }
-            self.cameraController.groupIDs = [Constants.partnerGroupId]
-            if #available(iOS 13.0, *) {
-                self.window?.overrideUserInterfaceStyle = .dark
-            }
-            self.cameraController.snapchatDelegate = self
-            let cameraViewController = CameraViewController(cameraController: self.cameraController)
-            cameraViewController.appOrientationDelegate = self
-            self.window?.rootViewController = cameraViewController
-        }
         return true
     }
     
@@ -99,5 +88,26 @@ class SampleCameraController: CameraController {
                 CatFactRemoteApiServiceProvider(),
                 CaptureRemoteApiServiceProvider()
             ])
+    }
+}
+
+// MARK: - LicenseInputDelegate
+
+extension AppDelegate: LicenseInputDelegate {
+    func didReceivePartnerGroupId(_ partnerGroupId: String?) {
+        if let id = partnerGroupId, !id.isEmpty {
+            AppDelegate.Constants.partnerGroupId = id
+        } else {
+            AppDelegate.Constants.partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // default
+        }
+        // Load CameraKit
+        cameraController.groupIDs = [AppDelegate.Constants.partnerGroupId]
+        if #available(iOS 13.0, *) {
+            window?.overrideUserInterfaceStyle = .dark
+        }
+        cameraController.snapchatDelegate = self
+        let cameraViewController = CameraViewController(cameraController: cameraController)
+        cameraViewController.appOrientationDelegate = self
+        window?.rootViewController = cameraViewController
     }
 }
