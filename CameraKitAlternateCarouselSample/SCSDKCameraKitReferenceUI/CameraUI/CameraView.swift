@@ -205,10 +205,16 @@ extension CameraView {
     }
 
     func updateFlipButton(isInFullScreen: Bool) {
-        // fullFrameFlipCameraButton.isHidden = !isInFullScreen
-        // smallFrameFlipCameraButton.isHidden = isInFullScreen
-        fullFrameFlipCameraButton.isHidden = true
-        smallFrameFlipCameraButton.isHidden = true
+        let isDebugMode = UserDefaults.standard.bool(forKey: "isDebugMode")
+        if isDebugMode {
+            fullFrameFlipCameraButton.isHidden = false
+            // smallFrameFlipCameraButton.isHidden = false
+            cameraButton.isHidden = false
+        } else {
+            fullFrameFlipCameraButton.isHidden = true
+            // smallFrameFlipCameraButton.isHidden = true
+            cameraButton.isHidden = true
+        }
     }
 
 }

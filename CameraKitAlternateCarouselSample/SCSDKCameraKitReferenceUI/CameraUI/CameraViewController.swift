@@ -107,6 +107,13 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
     private var maxRecordingDuration: TimeInterval = 0 // Will be set from userInfo
     private var isRecording: Bool = false // Flag untuk melacak status recording
 
+    /// Flag untuk mode debug
+    public var isDebugMode: Bool = false {
+        didSet {
+            cameraView.updateFlipButton(isInFullScreen: true)
+        }
+    }
+
     override open func loadView() {
         view = cameraView
     }

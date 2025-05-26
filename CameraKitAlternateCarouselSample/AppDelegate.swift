@@ -108,6 +108,11 @@ extension AppDelegate: LicenseInputDelegate {
         cameraController.snapchatDelegate = self
         let cameraViewController = CameraViewController(cameraController: cameraController)
         cameraViewController.appOrientationDelegate = self
+        
+        // Set mode debug jika ada
+        let isDebugMode = UserDefaults.standard.bool(forKey: "isDebugMode")
+        cameraViewController.isDebugMode = isDebugMode
+        
         window?.rootViewController = cameraViewController
     }
 }

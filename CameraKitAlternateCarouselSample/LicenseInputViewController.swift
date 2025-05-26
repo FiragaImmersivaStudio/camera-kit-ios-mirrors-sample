@@ -113,11 +113,20 @@ class LicenseInputViewController: UIViewController {
         return view
     }()
     
+    private let debugButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "ladybug.fill"), for: .normal)
+        button.tintColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.95, green: 0.94, blue: 0.99, alpha: 1.0)
         setupLayout()
         submitButton.addTarget(self, action: #selector(submitTapped), for: .touchUpInside)
+        debugButton.addTarget(self, action: #selector(debugTapped), for: .touchUpInside)
         setupAutofillAndCountdown()
         setupInteractionObservers()
     }
@@ -127,6 +136,7 @@ class LicenseInputViewController: UIViewController {
         view.addSubview(logoImageView)
         view.addSubview(appNameLabel)
         view.addSubview(cardView)
+        view.addSubview(debugButton)
         cardView.addSubview(instructionLabel)
         cardView.addSubview(textField)
         cardView.addSubview(submitButton)
@@ -135,6 +145,11 @@ class LicenseInputViewController: UIViewController {
         view.addSubview(loadingOverlay)
         loadingOverlay.addSubview(activityIndicator)
         NSLayoutConstraint.activate([
+            debugButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            debugButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            debugButton.widthAnchor.constraint(equalToConstant: 44),
+            debugButton.heightAnchor.constraint(equalToConstant: 44),
+            
             logoImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 32),
             logoImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             logoImageView.widthAnchor.constraint(equalToConstant: 80),
@@ -237,6 +252,38 @@ class LicenseInputViewController: UIViewController {
         let code = textField.text ?? ""
         // Simpan kode aplikasi ke UserDefaults (boleh kosong)
         UserDefaults.standard.setValue(code, forKey: "savedAppCode")
+        UserDefaults.standard.synchronize()
+
+        // Set mode debug
+        UserDefaults.standard.set(false, forKey: "isDebugMode")
+        UserDefaults.standard.synchronize()
+        
+        // Tampilkan overlay loading
+        loadingOverlay.isHidden = false
+        activityIndicator.startAnimating()
+        
+        if code.isEmpty {
+            self.delegate?.didReceivePartnerGroupId(nil)
+            return
+        }
+        fetchPartnerGroupId(for: code)
+    }
+    
+    @objc private func debugTapped() {
+        // Hilangkan fokus pada semua input
+        view.endEditing(true)
+        
+        // Disable tombol submit
+        submitButton.isEnabled = false
+        submitButton.backgroundColor = UIColor.gray
+        
+        let code = textField.text ?? ""
+        // Simpan kode aplikasi ke UserDefaults (boleh kosong)
+        UserDefaults.standard.setValue(code, forKey: "savedAppCode")
+        UserDefaults.standard.synchronize()
+        
+        // Set mode debug
+        UserDefaults.standard.set(true, forKey: "isDebugMode")
         UserDefaults.standard.synchronize()
         
         // Tampilkan overlay loading
