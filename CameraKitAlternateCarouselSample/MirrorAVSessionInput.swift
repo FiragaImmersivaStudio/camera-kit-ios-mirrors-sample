@@ -5,7 +5,11 @@ import SCSDKCameraKit
 class MirrorAVSessionInput: NSObject, Input {
     var destination: InputDestination?
     private(set) var frameSize: CGSize
-    private(set) var frameOrientation: AVCaptureVideoOrientation
+    var frameOrientation: AVCaptureVideoOrientation {
+        didSet {
+            destination?.inputChangedAttributes(self)
+        }
+    }
     var position: AVCaptureDevice.Position {
         didSet {
             guard position != oldValue else { return }
@@ -33,7 +37,12 @@ class MirrorAVSessionInput: NSObject, Input {
     var horizontalFieldOfView: CGFloat { fieldOfView }
 
     private var fieldOfView: CGFloat
-    private var isVideoMirrored: Bool
+    var isVideoMirrored: Bool {
+        didSet {
+            updateConnection()
+            destination?.inputChangedAttributes(self)
+        }
+    }
     private var format: AVCaptureDevice.Format?
     private var prevCaptureInput: AVCaptureInput?
     private var videoOrientation: AVCaptureVideoOrientation
@@ -56,14 +65,14 @@ class MirrorAVSessionInput: NSObject, Input {
     init(session: AVCaptureSession, fieldOfView: CGFloat = Constants.defaultFieldOfView) {
         self.fieldOfView = fieldOfView
         self.videoSession = session
-        self.frameOrientation = .portraitUpsideDown
+        self.frameOrientation = .portraitUpsideDown // landscapeLeft, landscapeRight, potrait, potraitUpsideDown
         self.configurationQueue = DispatchQueue(label: "com.snap.mirror.avsessioninput.configuration")
         self.videoOutput = AVCaptureVideoDataOutput()
         self.videoQueue = DispatchQueue(label: "com.snap.mirror.videoOutput")
         self.frameSize = UIScreen.main.bounds.size
-        self.position = .front
-        self.isVideoMirrored = false
-        self.videoOrientation = .landscapeLeft
+        self.position = .front // front, back
+        self.isVideoMirrored = false // true, false
+        self.videoOrientation = .landscapeLeft // landscapeLeft, landscapeRight, potrait, potraitUpsideDown
         super.init()
 
         videoSession.beginConfiguration()

@@ -122,6 +122,7 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
         super.viewDidLoad()
         self.setNeedsStatusBarAppearanceUpdate()
         setup()
+        setupCameraSettings()
         
         // Add countdown label to view
         view.addSubview(countdownLabel)
@@ -146,6 +147,7 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
 
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        cameraController.loadSavedSettings()
     }
 
     override open func viewDidDisappear(_ animated: Bool) {
@@ -430,6 +432,24 @@ extension CameraViewController {
 
         self.cameraView.cameraButton.delegate = self
         cameraView.cameraButton.allowWhileRecording = [doubleTap, pinchGestureRecognizer]
+    }
+
+    private func setupCameraSettings() {
+        cameraView.cameraSettingsView.onFrameOrientationChanged = { [weak self] orientation in
+            self?.cameraController.updateFrameOrientation(orientation)
+        }
+        
+        cameraView.cameraSettingsView.onPositionChanged = { [weak self] position in
+            self?.cameraController.updatePosition(position)
+        }
+        
+        cameraView.cameraSettingsView.onMirrorChanged = { [weak self] isMirrored in
+            self?.cameraController.updateVideoMirror(isMirrored)
+        }
+        
+        cameraView.cameraSettingsView.onVideoOrientationChanged = { [weak self] orientation in
+            self?.cameraController.updateVideoOrientation(orientation)
+        }
     }
 
 }
