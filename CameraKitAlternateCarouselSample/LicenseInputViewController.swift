@@ -297,6 +297,23 @@ class LicenseInputViewController: UIViewController {
         fetchPartnerGroupId(for: code)
     }
     
+    private func showExpirationAlert() {
+        let alertController = UIAlertController(
+            title: "Peringatan",
+            message: "AR Mirror telah kadaluarsa, silahkan hubungi Firaga Studio",
+            preferredStyle: .alert
+        )
+        
+        let okAction = UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            // Re-enable submit button after alert is dismissed
+            self?.submitButton.isEnabled = true
+            self?.submitButton.backgroundColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0) // #F4AB43
+        }
+        
+        alertController.addAction(okAction)
+        present(alertController, animated: true)
+    }
+
     private func fetchPartnerGroupId(for code: String) {
         let urlString = "https://license.firaga.studio/api/license/\(code)"
         guard let url = URL(string: urlString) else {
@@ -322,6 +339,24 @@ class LicenseInputViewController: UIViewController {
                    let dataDict = json["data"] as? [String: Any],
                    let licenseData = dataDict["license_data"] as? [String: Any],
                    let partnerGroupId = licenseData["partnergroupid"] as? String, !partnerGroupId.isEmpty {
+                    
+                    // Check expiration date if it exists
+                    if let expiredAtString = licenseData["expired_at"] as? String,
+                       let expiredAt = ISO8601DateFormatter().date(from: expiredAtString) {
+                        let currentDate = Date()
+                        if currentDate > expiredAt {
+                            DispatchQueue.main.async {
+                                // hide loading overlay
+                                self?.loadingOverlay.isHidden = true
+                                self?.activityIndicator.stopAnimating()
+                                // show expiration alert
+                                self?.showExpirationAlert()
+                            }
+                            return
+                        }
+                    }
+                    
+                    // If not expired or no expiration date, continue
                     DispatchQueue.main.async {
                         self?.delegate?.didReceivePartnerGroupId(partnerGroupId)
                     }
