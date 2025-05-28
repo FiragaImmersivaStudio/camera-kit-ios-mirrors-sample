@@ -30,7 +30,7 @@ open class CameraView: UIView {
         button.setImage(
             UIImage(named: Constants.cameraFlip, in: BundleHelper.resourcesBundle, compatibleWith: nil), for: .normal)
         button.translatesAutoresizingMaskIntoConstraints = false
-        // default hidden is false
+        // TODO: default hidden is false
         button.isHidden = true
 
         return button
@@ -76,7 +76,7 @@ open class CameraView: UIView {
         view.accessibilityIdentifier = CameraElements.cameraButton.id
         view.isAccessibilityElement = true
         view.translatesAutoresizingMaskIntoConstraints = false
-        // default hidden is false
+        // TODO: default hidden is false
         view.isHidden = true
         return view
     }()
@@ -88,6 +88,7 @@ open class CameraView: UIView {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setImage(
             UIImage(named: Constants.lensExplore, in: BundleHelper.resourcesBundle, compatibleWith: nil), for: .normal)
+        // TODO: default hidden is false
         // button.isHidden = true
         return button
     }()
@@ -121,7 +122,10 @@ open class CameraView: UIView {
     }()
 
     private var settingsButtonTimer: Timer?
-    private let settingsButtonTimeout: TimeInterval = 10.0
+    private let settingsButtonTimeout: TimeInterval = 15.0
+    
+    private var lensButtonsTimer: Timer?
+    private let lensButtonsTimeout: TimeInterval = 15.0
     
     /// Settings button to toggle camera settings
     public lazy var settingsButton: UIButton = {
@@ -136,6 +140,7 @@ open class CameraView: UIView {
     public override init(frame: CGRect) {
         super.init(frame: frame)
         setup()
+        startLensButtonsTimer()
     }
 
     public required init?(coder: NSCoder) {
@@ -144,6 +149,55 @@ open class CameraView: UIView {
 
     open override func layoutSubviews() {
         super.layoutSubviews()
+    }
+
+    private func startLensButtonsTimer() {
+        // Cancel any existing timer
+        lensButtonsTimer?.invalidate()
+        
+        // Show the buttons initially
+        lensPickerButton.isHidden = false
+        clearLensView.isHidden = false
+        
+        // Create a new timer
+        lensButtonsTimer = Timer.scheduledTimer(withTimeInterval: lensButtonsTimeout, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            // Hide the buttons
+            self.lensPickerButton.isHidden = true
+            self.clearLensView.isHidden = true
+        }
+    }
+
+    // Add method to handle any interaction with the buttons
+    public func handleLensButtonsInteraction() {
+        startLensButtonsTimer()
+    }
+
+    private func startSettingsButtonTimer() {
+        // Cancel any existing timer
+        settingsButtonTimer?.invalidate()
+        
+        // Show the button
+        settingsButton.isHidden = false
+        
+        // Create a new timer
+        settingsButtonTimer = Timer.scheduledTimer(withTimeInterval: settingsButtonTimeout, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            // Hide both the settings button and settings view
+            self.settingsButton.isHidden = true
+            self.cameraSettingsView.isHidden = true
+        }
+    }
+
+    @objc private func settingsButtonTapped() {
+        // Reset the timer when the button is tapped
+        startSettingsButtonTimer()
+        cameraSettingsView.isHidden.toggle()
+    }
+
+    // Add method to handle any interaction with the settings view
+    public func handleSettingsInteraction() {
+        startSettingsButtonTimer()
     }
 
 }
@@ -196,33 +250,6 @@ extension CameraView {
         ])
         
         // Start the timer when the button is first shown
-        startSettingsButtonTimer()
-    }
-
-    private func startSettingsButtonTimer() {
-        // Cancel any existing timer
-        settingsButtonTimer?.invalidate()
-        
-        // Show the button
-        settingsButton.isHidden = false
-        
-        // Create a new timer
-        settingsButtonTimer = Timer.scheduledTimer(withTimeInterval: settingsButtonTimeout, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-            // Hide both the settings button and settings view
-            self.settingsButton.isHidden = true
-            self.cameraSettingsView.isHidden = true
-        }
-    }
-
-    @objc private func settingsButtonTapped() {
-        // Reset the timer when the button is tapped
-        startSettingsButtonTimer()
-        cameraSettingsView.isHidden.toggle()
-    }
-
-    // Add method to handle any interaction with the settings view
-    public func handleSettingsInteraction() {
         startSettingsButtonTimer()
     }
 
