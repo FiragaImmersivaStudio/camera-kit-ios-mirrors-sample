@@ -501,6 +501,9 @@ public class CameraSettingsView: UIView {
             stackView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12)
         ])
         
+        // Add mouse movement detection
+        setupMouseMovementDetection()
+        
         // Setup Frame Orientation Controls
         frameOrientationButtons = [
             createButton(title: "Landscape Left", action: #selector(frameOrientationTapped(_:))),
@@ -694,5 +697,59 @@ public class CameraSettingsView: UIView {
                 }
             }
         }
+    }
+
+    // Add new method for mouse movement detection
+    private func setupMouseMovementDetection() {
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handleMouseMovement(_:)))
+        panGesture.minimumNumberOfTouches = 0 // This allows mouse movement detection
+        addGestureRecognizer(panGesture)
+    }
+    
+    @objc private func handleMouseMovement(_ gesture: UIPanGestureRecognizer) {
+        if gesture.state == .changed {
+            let translation = gesture.translation(in: self)
+            if abs(translation.x) > 5 || abs(translation.y) > 5 { // Threshold to avoid too frequent updates
+                showToast(message: "Mouse movement detected")
+                gesture.setTranslation(.zero, in: self)
+            }
+        }
+    }
+    
+    private func showToast(message: String) {
+        // Remove existing toast if any
+        viewWithTag(999)?.removeFromSuperview()
+        
+        let toastLabel = UILabel()
+        toastLabel.tag = 999
+        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        toastLabel.textColor = .white
+        toastLabel.textAlignment = .center
+        toastLabel.font = .systemFont(ofSize: 14)
+        toastLabel.text = message
+        toastLabel.alpha = 1.0
+        toastLabel.layer.cornerRadius = 10
+        toastLabel.clipsToBounds = true
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        addSubview(toastLabel)
+        
+        NSLayoutConstraint.activate([
+            toastLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
+            toastLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -100),
+            toastLabel.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -40),
+            toastLabel.heightAnchor.constraint(equalToConstant: 35)
+        ])
+        
+        // Animate toast appearance and disappearance
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseIn, animations: {
+            toastLabel.alpha = 1.0
+        }, completion: { _ in
+            UIView.animate(withDuration: 0.5, delay: 1.5, options: .curveEaseOut, animations: {
+                toastLabel.alpha = 0.0
+            }, completion: { _ in
+                toastLabel.removeFromSuperview()
+            })
+        })
     }
 }
