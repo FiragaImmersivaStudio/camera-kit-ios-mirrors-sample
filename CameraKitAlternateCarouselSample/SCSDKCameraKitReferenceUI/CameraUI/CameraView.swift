@@ -502,7 +502,7 @@ public class CameraSettingsView: UIView {
         ])
         
         // Add mouse movement detection
-        setupMouseMovementDetection()
+        // setupMouseMovementDetection()
         
         // Setup Frame Orientation Controls
         frameOrientationButtons = [
