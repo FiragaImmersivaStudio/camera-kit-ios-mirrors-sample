@@ -515,6 +515,10 @@ public class CameraSettingsView: UIView {
             createButton(title: "Front", action: #selector(positionTapped(_:))),
             createButton(title: "Back", action: #selector(positionTapped(_:)))
         ]
+        
+        // Check available cameras and update position buttons
+        checkAvailableCameras()
+        
         positionButtons.forEach { positionStack.addArrangedSubview($0) }
         
         // Setup Mirror Controls
@@ -650,5 +654,45 @@ public class CameraSettingsView: UIView {
         selectedVideoOrientation = orientation
         updateButtonColors()
         onVideoOrientationChanged?(orientation)
+    }
+
+    // Add new method to check available cameras
+    private func checkAvailableCameras() {
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera],
+            mediaType: .video,
+            position: .unspecified
+        )
+        
+        let availableCameras = discoverySession.devices
+        
+        // If only one camera is available
+        if availableCameras.count == 1 {
+            let availableCamera = availableCameras[0]
+            let availablePosition = availableCamera.position
+            
+            // Check if saved position in UserDefaults is different from available position
+            if let savedPositionRaw = UserDefaults.standard.object(forKey: UserDefaultsKeys.position) as? Int,
+               let savedPosition = AVCaptureDevice.Position(rawValue: savedPositionRaw),
+               savedPosition != availablePosition {
+                // Update UserDefaults with available position
+                UserDefaults.standard.set(availablePosition.rawValue, forKey: UserDefaultsKeys.position)
+            }
+            
+            // Disable the button for the unavailable camera position
+            for button in positionButtons {
+                if let title = button.title(for: .normal) {
+                    let buttonPosition: AVCaptureDevice.Position = title == "Front" ? .front : .back
+                    if buttonPosition != availablePosition {
+                        button.isEnabled = false
+                        button.alpha = 0.5
+                    } else {
+                        // Set the available camera as selected
+                        button.backgroundColor = UIColor(red: 0.0, green: 0.8, blue: 0.0, alpha: 0.5)
+                        selectedPosition = availablePosition
+                    }
+                }
+            }
+        }
     }
 }
