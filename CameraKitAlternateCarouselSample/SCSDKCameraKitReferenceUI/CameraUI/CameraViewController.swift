@@ -411,9 +411,10 @@ extension CameraViewController {
         let singleTap = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap(sender:)))
         cameraView.previewView.addGestureRecognizer(singleTap)
 
-        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(flip(sender:)))
-        doubleTap.numberOfTapsRequired = 2
-        cameraView.previewView.addGestureRecognizer(doubleTap)
+        // Double tap gesture recognizer for camera flip is disabled
+        // let doubleTap = UITapGestureRecognizer(target: self, action: #selector(flip(sender:)))
+        // doubleTap.numberOfTapsRequired = 2
+        // cameraView.previewView.addGestureRecognizer(doubleTap)
 
         let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(zoom(sender:)))
         cameraView.previewView.addGestureRecognizer(pinchGestureRecognizer)
@@ -431,7 +432,8 @@ extension CameraViewController {
         lensPickerView.performInitialSelection()
 
         self.cameraView.cameraButton.delegate = self
-        cameraView.cameraButton.allowWhileRecording = [doubleTap, pinchGestureRecognizer]
+        // cameraView.cameraButton.allowWhileRecording = [doubleTap, pinchGestureRecognizer]
+        cameraView.cameraButton.allowWhileRecording = [pinchGestureRecognizer]
     }
 
     private func setupCameraSettings() {
