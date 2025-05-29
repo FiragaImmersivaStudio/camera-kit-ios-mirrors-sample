@@ -31,7 +31,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
             // if let jsonDict = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] {
             if let jsonDict = request.parameters as? [String: Any] {
                 // Body can be parsed as JSON
-                // https://api-record.firaga.studio/capture_trigger?type=photo&app=firagamirror&timestamp=<timestamp>&duration=<duration>
+                // https://license.firaga.studio/api/capture_trigger?type=photo&app=firagamirror&timestamp=<timestamp>&duration=<duration>
                 let captureType = jsonDict["type"] as? String
                 let app = jsonDict["app"] as? String
                 
@@ -81,7 +81,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
             // if let jsonDict = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] {
             if let jsonDict = request.parameters as? [String: Any] {
                 // Body can be parsed as JSON
-                // https://api-record.firaga.studio/capture_stop?app=firagamirror
+                // https://license.firaga.studio/api/capture_stop?app=firagamirror
                 let app = jsonDict["app"] as? String
                 print("Received capture stop request from lens: \(app ?? "unknown")")
                 
@@ -119,7 +119,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
             // if let jsonDict = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] {
             if let jsonDict = request.parameters as? [String: Any] {
                 // Body can be parsed as JSON
-                // https://api-record.firaga.studio/stats_impression_count?count=1&start_at=<start_at>&end_at=<end_at>&app=firagamirror
+                // https://license.firaga.studio/api/stats_impression_count?count=1&start_at=<start_at>&end_at=<end_at>&app=firagamirror
                 let app = jsonDict["app"] as? String
                 let count = jsonDict["count"] as? Int
                 let now = ISO8601DateFormatter().string(from: Date())
@@ -129,7 +129,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
                 print("Received statistic impression count request from lens: \(app ?? "unknown")")
 
                 // hit that api with GET method, the output is json, if json.status is true, then print success, else print error
-                let url = URL(string: "https://api-record.firaga.studio/stats_impression_count?count=\(count ?? 0)&start_at=\(start_at ?? "")&end_at=\(end_at ?? "")&app=\(app ?? "")")!
+                let url = URL(string: "https://license.firaga.studio/api/stats_impression_count?count=\(count ?? 0)&start_at=\(start_at ?? "")&end_at=\(end_at ?? "")&app=\(app ?? "")")!
                 let theReq = URLRequest(url: url)
                 let task = URLSession.shared.dataTask(with: theReq) { data, response, error in
                     print("Received statistic impression count response from lens: \(data)")
@@ -151,7 +151,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
             // if let jsonDict = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] {
             if let jsonDict = request.parameters as? [String: Any] {
                 // Body can be parsed as JSON
-                // https://api-record.firaga.studio/stats_play_count?count=1&start_at=<start_at>&end_at=<end_at>&play_time=1&app=firagamirror
+                // https://license.firaga.studio/api/stats_play_count?count=1&start_at=<start_at>&end_at=<end_at>&play_time=1&app=firagamirror
                 let app = jsonDict["app"] as? String
                 let count = jsonDict["count"] as? Int
                 let now = ISO8601DateFormatter().string(from: Date())
@@ -162,7 +162,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
                 print("Received statistic play count request from lens: \(app ?? "unknown")")
 
                 // hit that api with GET method, the output is json, if json.status is true, then print success, else print error
-                let url = URL(string: "https://api-record.firaga.studio/stats_play_count?count=\(count ?? 0)&start_at=\(start_at ?? "")&end_at=\(end_at ?? "")&play_time=\(play_time ?? 0)&app=\(app ?? "")")!
+                let url = URL(string: "https://license.firaga.studio/api/stats_play_count?count=\(count ?? 0)&start_at=\(start_at ?? "")&end_at=\(end_at ?? "")&play_time=\(play_time ?? 0)&app=\(app ?? "")")!
                 let theReq = URLRequest(url: url)
                 let task = URLSession.shared.dataTask(with: theReq) { data, response, error in
                     print("Received statistic play count response from lens: \(data)")
@@ -184,7 +184,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
             // if let jsonDict = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] {
             if let jsonDict = request.parameters as? [String: Any] {
                 // Body can be parsed as JSON
-                // https://api-record.firaga.studio/stats_notice_count?app=firagamirror&count=1&start_at=<start_at>&end_at=<end_at>&face_time=1
+                // https://license.firaga.studio/api/stats_notice_count?app=firagamirror&count=1&start_at=<start_at>&end_at=<end_at>&face_time=1
                 let app = jsonDict["app"] as? String
                 let count = jsonDict["count"] as? Int
                 let now = ISO8601DateFormatter().string(from: Date())
@@ -195,7 +195,7 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
                 print("Received statistic notice count request from lens: \(app ?? "unknown")")
 
                 // hit that api with GET method, the output is json, if json.status is true, then print success, else print error
-                let url = URL(string: "https://api-record.firaga.studio/stats_notice_count?count=\(count ?? 0)&start_at=\(start_at ?? "")&end_at=\(end_at ?? "")&face_time=\(face_time ?? 0)&app=\(app ?? "")")!
+                let url = URL(string: "https://license.firaga.studio/api/stats_notice_count?count=\(count ?? 0)&start_at=\(start_at ?? "")&end_at=\(end_at ?? "")&face_time=\(face_time ?? 0)&app=\(app ?? "")")!
                 let theReq = URLRequest(url: url)
                 let task = URLSession.shared.dataTask(with: theReq) { data, response, error in
                     print("Received statistic notice count response from lens: \(data)")
