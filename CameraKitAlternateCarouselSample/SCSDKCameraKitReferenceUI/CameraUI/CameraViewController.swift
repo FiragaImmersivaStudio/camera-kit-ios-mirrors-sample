@@ -341,6 +341,14 @@ extension CameraViewController {
             name: NSNotification.Name("TriggerCapture"),
             object: nil
         )
+        
+        // Register for lens capture stop notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCaptureStop(_:)),
+            name: NSNotification.Name("StopCapture"),
+            object: nil
+        )
     }
     
     /// Handle capture triggers from lens
@@ -403,6 +411,17 @@ extension CameraViewController {
             }
         } else {
             print("Already recording, ignoring trigger")
+        }
+    }
+
+    /// Handle capture stop from lens
+    @objc private func handleCaptureStop(_ notification: Notification) {
+        // Only stop if we're currently recording
+        if isRecording {
+            print("Stopping video recording from lens request")
+            cameraButtonHoldEnded(cameraView.cameraButton)
+        } else {
+            print("No active recording to stop")
         }
     }
 
