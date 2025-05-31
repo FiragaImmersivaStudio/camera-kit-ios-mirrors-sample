@@ -32,6 +32,10 @@ class MirrorAVSessionInput: NSObject, Input {
     private var captureDevice: AVCaptureDevice? {
         AVCaptureDevice.default(.builtInWideAngleCamera, for: AVMediaType.video, position: position)
     }
+    
+    private var audioDevice: AVCaptureDevice? {
+        AVCaptureDevice.default(for: .audio)
+    }
 
     var isRunning: Bool { videoSession.isRunning }
     var horizontalFieldOfView: CGFloat { fieldOfView }
@@ -50,9 +54,14 @@ class MirrorAVSessionInput: NSObject, Input {
     private let context = CIContext()
     private let videoSession: AVCaptureSession
     private let videoOutput: AVCaptureVideoDataOutput
+    private let audioOutput: AVCaptureAudioDataOutput
 
     private var videoDeviceInput: AVCaptureDeviceInput? {
         deviceInput(for: .video, session: videoSession)
+    }
+    
+    private var audioDeviceInput: AVCaptureDeviceInput? {
+        deviceInput(for: .audio, session: videoSession)
     }
 
     private var videoConnection: AVCaptureConnection? {
@@ -68,6 +77,7 @@ class MirrorAVSessionInput: NSObject, Input {
         self.frameOrientation = .portraitUpsideDown // landscapeLeft, landscapeRight, potrait, potraitUpsideDown
         self.configurationQueue = DispatchQueue(label: "com.snap.mirror.avsessioninput.configuration")
         self.videoOutput = AVCaptureVideoDataOutput()
+        self.audioOutput = AVCaptureAudioDataOutput()
         self.videoQueue = DispatchQueue(label: "com.snap.mirror.videoOutput")
         self.frameSize = UIScreen.main.bounds.size
         self.position = .front // front, back
@@ -76,11 +86,39 @@ class MirrorAVSessionInput: NSObject, Input {
         super.init()
 
         videoSession.beginConfiguration()
+        
+        // Configure video
         videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange]
         videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
         if videoSession.canAddOutput(videoOutput) { videoSession.addOutput(videoOutput) }
         videoConnection?.videoOrientation = videoOrientation
+        
+        // Configure audio
+        audioOutput.setSampleBufferDelegate(self, queue: videoQueue)
+        if videoSession.canAddOutput(audioOutput) { videoSession.addOutput(audioOutput) }
+        
+        // Add audio input
+        setupAudioInput()
+        
         videoSession.commitConfiguration()
+    }
+    
+    private func setupAudioInput() {
+        if let audioDevice = audioDevice {
+            do {
+                let audioInput = try AVCaptureDeviceInput(device: audioDevice)
+                if videoSession.canAddInput(audioInput) {
+                    videoSession.addInput(audioInput)
+                    debugPrint("[\(String(describing: self))]: Successfully added audio input")
+                } else {
+                    debugPrint("[\(String(describing: self))]: Cannot add audio input to session")
+                }
+            } catch {
+                debugPrint("[\(String(describing: self))]: Failed to create audio input: \(error)")
+            }
+        } else {
+            debugPrint("[\(String(describing: self))]: No audio device available")
+        }
     }
 
     func startRunning() {
@@ -102,7 +140,7 @@ class MirrorAVSessionInput: NSObject, Input {
     }
 }
 
-extension MirrorAVSessionInput: AVCaptureVideoDataOutputSampleBufferDelegate {
+extension MirrorAVSessionInput: AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate {
     func captureOutput(
         _ output: AVCaptureOutput,
         didOutput sampleBuffer: CMSampleBuffer,
@@ -114,6 +152,8 @@ extension MirrorAVSessionInput: AVCaptureVideoDataOutputSampleBufferDelegate {
                 destination?.inputChangedAttributes(self)
             }
             destination?.input(self, receivedVideoSampleBuffer: sampleBuffer)
+        } else if output == audioOutput {
+            destination?.input(self, receivedAudioSampleBuffer: sampleBuffer)
         }
     }
 }
