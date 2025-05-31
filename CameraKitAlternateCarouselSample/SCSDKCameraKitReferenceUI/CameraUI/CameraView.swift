@@ -152,6 +152,15 @@ open class CameraView: UIView {
     }
 
     private func startLensButtonsTimer() {
+        // Check if in debug mode first
+        let isDebugMode = UserDefaults.standard.bool(forKey: "isDebugMode")
+        if isDebugMode {
+            // In debug mode, ensure buttons are visible but don't set timeout
+            lensPickerButton.isHidden = false
+            clearLensView.isHidden = false
+            return
+        }
+        
         // Cancel any existing timer
         lensButtonsTimer?.invalidate()
         
@@ -170,10 +179,25 @@ open class CameraView: UIView {
 
     // Add method to handle any interaction with the buttons
     public func handleLensButtonsInteraction() {
+        let isDebugMode = UserDefaults.standard.bool(forKey: "isDebugMode")
+        if isDebugMode {
+            // In debug mode, just ensure buttons are visible without timeout
+            lensPickerButton.isHidden = false
+            clearLensView.isHidden = false
+            return
+        }
         startLensButtonsTimer()
     }
 
     private func startSettingsButtonTimer() {
+        // Check if in debug mode first
+        let isDebugMode = UserDefaults.standard.bool(forKey: "isDebugMode")
+        if isDebugMode {
+            // In debug mode, ensure button is visible but don't set timeout
+            settingsButton.isHidden = false
+            return
+        }
+        
         // Cancel any existing timer
         settingsButtonTimer?.invalidate()
         
@@ -197,6 +221,12 @@ open class CameraView: UIView {
 
     // Add method to handle any interaction with the settings view
     public func handleSettingsInteraction() {
+        let isDebugMode = UserDefaults.standard.bool(forKey: "isDebugMode")
+        if isDebugMode {
+            // In debug mode, just ensure settings button is visible without timeout
+            settingsButton.isHidden = false
+            return
+        }
         startSettingsButtonTimer()
     }
 
