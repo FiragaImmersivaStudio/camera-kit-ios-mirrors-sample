@@ -212,10 +212,18 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
                 
                 responseHandler(.answered, errorResponse)
             }
+        } else if endpointId == "handshake" {
+            // Check if we can parse the body as JSON
+            // if let jsonDict = try? JSONSerialization.jsonObject(with: request.body) as? [String: Any] {
+            if let jsonDict = request.parameters as? [String: Any] {
+                // Body can be parsed as JSON
+                // https://license.firaga.studio/api/handshake?app=firagamirror
+                let app = jsonDict["app"] as? String
+
+                print("Received handshake request from lens: \(app ?? "unknown")")
+            }
         }
 
-            
-        
         return CaptureRemoteApiServiceCall()
     }
 }

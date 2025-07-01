@@ -18,6 +18,20 @@ public class PreviewViewController: UIViewController {
         }
     }
 
+    /// Timer for cancel button timeout
+    private var cancelTimeoutTimer: Timer?
+    private var cancelTimeoutValue: Int = 0
+    private var originalCancelText: String = ""
+
+    /// Get custom button text from UserDefaults with fallback to default
+    private func getButtonText(for key: String, defaultText: String) -> String {
+        guard let customText = UserDefaults.standard.dictionary(forKey: "customText") as? [String: String],
+              let text = customText[key], !text.isEmpty else {
+            return defaultText
+        }
+        return text
+    }
+
     // MARK: View Properties
 
     fileprivate let closeButton: UIButton = {
@@ -32,19 +46,19 @@ public class PreviewViewController: UIViewController {
 
     fileprivate let uploadButton: UIButton = {
         let button = UIButton()
-        button.setTitle("Upload", for: .normal)
         button.backgroundColor = .systemGray
         button.layer.cornerRadius = 8
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(equalToConstant: 44).isActive = true
         return button
     }()
 
     fileprivate let cancelButton: UIButton = {
         let button = UIButton()
-        button.setTitle("Cancel", for: .normal)
         button.backgroundColor = .systemGray
         button.layer.cornerRadius = 8
         button.translatesAutoresizingMaskIntoConstraints = false
+        button.heightAnchor.constraint(equalToConstant: 44).isActive = true
         return button
     }()
 
@@ -84,10 +98,10 @@ public class PreviewViewController: UIViewController {
 
     fileprivate lazy var uploadButtonStackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [uploadButton, cancelButton])
-        stackView.alignment = .center
-        stackView.axis = .horizontal
+        stackView.alignment = .fill
+        stackView.axis = .vertical
         stackView.distribution = .fillEqually
-        stackView.spacing = 16.0
+        stackView.spacing = 12.0
         stackView.translatesAutoresizingMaskIntoConstraints = false
         return stackView
     }()
@@ -107,8 +121,74 @@ public class PreviewViewController: UIViewController {
         setupOverlayView()
         setupQRCodeView()
         
+        // Configure button titles with custom text
+        uploadButton.setTitle(getButtonText(for: "button_upload", defaultText: "Upload"), for: .normal)
+        originalCancelText = getButtonText(for: "button_cancel", defaultText: "Cancel")
+        cancelButton.setTitle(originalCancelText, for: .normal)
+        
+        // Setup cancel timeout if available
+        setupCancelTimeout()
+        
         // Set initial focus
         focusedButton = uploadButton
+    }
+
+    private func setupCancelTimeout() {
+        // Get timeout from AppDelegate instead of UserDefaults  
+        let timeoutValue = AppDelegate.cancelTimeout ?? 0
+        print("🔍 Debug: setupCancelTimeout called - timeoutValue from AppDelegate: \(timeoutValue)")
+        
+        // Don't setup if timer is already running
+        if cancelTimeoutTimer != nil {
+            print("🔍 Debug: Timer is already running, skipping setup")
+            return
+        }
+        
+        if timeoutValue > 0 {
+            cancelTimeoutValue = timeoutValue
+            print("🔍 Debug: Starting cancel timeout with value: \(cancelTimeoutValue)")
+            startCancelTimeout()
+        } else {
+            print("🔍 Debug: No cancel timeout set or value is 0")
+        }
+    }
+    
+    private func startCancelTimeout() {
+        print("🔍 Debug: startCancelTimeout called with value: \(cancelTimeoutValue)")
+        cancelTimeoutTimer?.invalidate()
+        
+        updateCancelButtonText()
+        
+        cancelTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            self.cancelTimeoutValue -= 1
+            print("🔍 Debug: Timer tick - cancelTimeoutValue: \(self.cancelTimeoutValue)")
+            
+            if self.cancelTimeoutValue <= 0 {
+                print("🔍 Debug: Timeout reached 0 - auto dismissing")
+                self.cancelTimeoutTimer?.invalidate()
+                self.cancelTimeoutTimer = nil
+                // Auto dismiss when timeout reaches 0
+                self.cancelButtonPressed(self.cancelButton)
+            } else {
+                self.updateCancelButtonText()
+            }
+        }
+        print("🔍 Debug: Timer scheduled successfully")
+    }
+    
+    private func updateCancelButtonText() {
+        let timeoutText = "\(originalCancelText) (\(cancelTimeoutValue))"
+        print("🔍 Debug: Updating cancel button text to: \(timeoutText)")
+        cancelButton.setTitle(timeoutText, for: .normal)
+    }
+    
+    private func stopCancelTimeout() {
+        print("🔍 Debug: stopCancelTimeout called")
+        cancelTimeoutTimer?.invalidate()
+        cancelTimeoutTimer = nil
+        cancelButton.setTitle(originalCancelText, for: .normal)
     }
 
     // MARK: Keyboard Commands
@@ -162,6 +242,9 @@ public class PreviewViewController: UIViewController {
         uploadButtonStackView.isHidden = true
         overlayView.isHidden = true
         focusedButton = nil
+        
+        // Stop cancel timeout during loading
+        stopCancelTimeout()
     }
 
     func hideLoading() {
@@ -170,6 +253,14 @@ public class PreviewViewController: UIViewController {
         uploadButtonStackView.isHidden = false
         overlayView.isHidden = true
         focusedButton = uploadButton
+        
+        // Restart cancel timeout after loading if needed
+        setupCancelTimeout()
+    }
+    
+    override public func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        stopCancelTimeout()
     }
 }
 
@@ -201,8 +292,8 @@ extension PreviewViewController {
         NSLayoutConstraint.activate([
             uploadButtonStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             uploadButtonStackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -32.0),
-            uploadButtonStackView.widthAnchor.constraint(equalToConstant: 256),
-            uploadButtonStackView.heightAnchor.constraint(equalToConstant: 44),
+            uploadButtonStackView.widthAnchor.constraint(equalToConstant: 320),
+            uploadButtonStackView.heightAnchor.constraint(equalToConstant: 100),
         ])
     }
 
@@ -211,6 +302,7 @@ extension PreviewViewController {
     }
 
     @objc private func cancelButtonPressed(_ sender: UIButton) {
+        stopCancelTimeout()
         onDismiss?()
         dismiss(animated: true, completion: nil)
     }

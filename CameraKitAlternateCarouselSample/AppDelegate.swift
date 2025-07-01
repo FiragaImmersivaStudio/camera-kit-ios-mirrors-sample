@@ -10,6 +10,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
 
     private enum Constants {
         static var partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // default
+        static var cancelTimeout: Int?
     }
 
     var window: UIWindow?
@@ -17,6 +18,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
 
     let snapAPI = SCSDKSnapAPI()
     let cameraController = SampleCameraController()
+
+    // Public getter for cancel timeout
+    static var cancelTimeout: Int? {
+        return Constants.cancelTimeout
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         window = UIWindow(frame: UIScreen.main.bounds)
@@ -94,12 +100,25 @@ class SampleCameraController: CameraController {
 // MARK: - LicenseInputDelegate
 
 extension AppDelegate: LicenseInputDelegate {
-    func didReceivePartnerGroupId(_ partnerGroupId: String?) {
+    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, cancelTimeout: Int?) {
         if let id = partnerGroupId, !id.isEmpty {
             AppDelegate.Constants.partnerGroupId = id
         } else {
             AppDelegate.Constants.partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // default
         }
+        
+        // Store custom text in UserDefaults if available
+        if let customText = customText {
+            UserDefaults.standard.set(customText, forKey: "customText")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "customText")
+        }
+        
+        // Store cancel timeout as a simple static property for easy access
+        AppDelegate.Constants.cancelTimeout = cancelTimeout
+        
+        UserDefaults.standard.synchronize()
+        
         // Load CameraKit
         cameraController.groupIDs = [AppDelegate.Constants.partnerGroupId]
         if #available(iOS 13.0, *) {
