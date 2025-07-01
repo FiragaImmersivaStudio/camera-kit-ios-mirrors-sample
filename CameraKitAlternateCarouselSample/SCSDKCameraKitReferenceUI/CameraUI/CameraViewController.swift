@@ -124,6 +124,9 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
         setup()
         setupCameraSettings()
         
+        // Update watermark visibility based on license data
+        cameraView.updateWatermarkVisibility()
+        
         // Add countdown label to view
         view.addSubview(countdownLabel)
         countdownLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -646,7 +649,9 @@ extension CameraViewController: LensPickerViewControllerDelegate, LensPickerView
             self.cameraView.clearLensView.isHidden = self.cameraController.currentLens == nil
             self.cameraView.cameraButton.isHidden = true
             self.cameraView.lensPickerButton.isHidden = false
-            cameraView.snapWatermark.isHidden = false
+            
+            // Update watermark visibility based on license data instead of hard-coded value
+            cameraView.updateWatermarkVisibility()
 
             isInFullFrame = true
         }

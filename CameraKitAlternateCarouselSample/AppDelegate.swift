@@ -11,6 +11,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
     private enum Constants {
         static var partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // default
         static var cancelTimeout: Int?
+        static var isHide: Bool?
     }
 
     var window: UIWindow?
@@ -22,6 +23,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
     // Public getter for cancel timeout
     static var cancelTimeout: Int? {
         return Constants.cancelTimeout
+    }
+    
+    // Public getter for is_hide
+    static var isHide: Bool? {
+        return Constants.isHide
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -100,7 +106,7 @@ class SampleCameraController: CameraController {
 // MARK: - LicenseInputDelegate
 
 extension AppDelegate: LicenseInputDelegate {
-    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, cancelTimeout: Int?) {
+    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, cancelTimeout: Int?, isHide: Bool?) {
         if let id = partnerGroupId, !id.isEmpty {
             AppDelegate.Constants.partnerGroupId = id
         } else {
@@ -116,6 +122,9 @@ extension AppDelegate: LicenseInputDelegate {
         
         // Store cancel timeout as a simple static property for easy access
         AppDelegate.Constants.cancelTimeout = cancelTimeout
+        
+        // Store is_hide for snap watermark visibility control
+        AppDelegate.Constants.isHide = isHide
         
         UserDefaults.standard.synchronize()
         

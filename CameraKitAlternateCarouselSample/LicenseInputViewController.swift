@@ -1,7 +1,7 @@
 import UIKit
 
 protocol LicenseInputDelegate: AnyObject {
-    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, cancelTimeout: Int?)
+    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, cancelTimeout: Int?, isHide: Bool?)
 }
 
 class LicenseInputViewController: UIViewController {
@@ -303,7 +303,7 @@ class LicenseInputViewController: UIViewController {
         activityIndicator.startAnimating()
         
         if code.isEmpty {
-            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil)
+            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil, isHide: nil)
             return
         }
         fetchPartnerGroupId(for: code)
@@ -334,7 +334,7 @@ class LicenseInputViewController: UIViewController {
         activityIndicator.startAnimating()
         
         if code.isEmpty {
-            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil)
+            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil, isHide: nil)
             return
         }
         fetchPartnerGroupId(for: code)
@@ -362,7 +362,7 @@ class LicenseInputViewController: UIViewController {
         guard let url = URL(string: urlString) else {
             self.activityIndicator.stopAnimating()
             self.showToast(message: "Format URL tidak valid")
-            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil)
+            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil, isHide: nil)
             return
         }
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
@@ -372,7 +372,7 @@ class LicenseInputViewController: UIViewController {
             guard let data = data, error == nil else {
                 DispatchQueue.main.async {
                     self?.showToast(message: "Gagal terhubung ke server")
-                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil)
+                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil, isHide: nil)
                 }
                 return
             }
@@ -407,20 +407,24 @@ class LicenseInputViewController: UIViewController {
                     let cancelTimeout = Int(cancelTimeoutStr ?? "")
                     print("🔍 Debug: API Response - cancel_timeout value: \(String(describing: cancelTimeout))")
                     
+                    // Extract is_hide if it exists
+                    let isHide = licenseData["is_hide"] as? Bool
+                    print("🔍 Debug: API Response - is_hide value: \(String(describing: isHide))")
+                    
                     // If not expired or no expiration date, continue
                     DispatchQueue.main.async {
-                        self?.delegate?.didReceivePartnerGroupId(partnerGroupId, customText: customText, cancelTimeout: cancelTimeout)
+                        self?.delegate?.didReceivePartnerGroupId(partnerGroupId, customText: customText, cancelTimeout: cancelTimeout, isHide: isHide)
                     }
                 } else {
                     DispatchQueue.main.async {
                         self?.showToast(message: "Kode aplikasi tidak valid atau tidak ditemukan")
-                        self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil)
+                        self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil, isHide: nil)
                     }
                 }
             } catch {
                 DispatchQueue.main.async {
                     self?.showToast(message: "Terjadi kesalahan pada data server")
-                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil)
+                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, cancelTimeout: nil, isHide: nil)
                 }
             }
         }

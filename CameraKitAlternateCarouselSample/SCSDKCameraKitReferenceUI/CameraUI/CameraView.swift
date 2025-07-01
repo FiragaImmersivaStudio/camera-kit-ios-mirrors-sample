@@ -360,6 +360,17 @@ extension CameraView {
             snapWatermark.topAnchor.constraint(equalTo: topAnchor, constant: 73),
             snapWatermark.centerXAnchor.constraint(equalTo: centerXAnchor),
         ])
+        
+        // Initial visibility setup based on isHide value
+        updateWatermarkVisibility()
+    }
+    
+    /// Update watermark visibility based on isHide value from AppDelegate
+    public func updateWatermarkVisibility() {
+        // Default to show watermark if isHide is nil
+        let shouldHide = AppDelegate.isHide ?? false
+        snapWatermark.isHidden = shouldHide
+        print("🔍 Debug: Snap watermark isHidden set to: \(shouldHide)")
     }
 }
 
