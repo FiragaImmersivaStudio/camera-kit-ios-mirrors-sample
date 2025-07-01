@@ -7,6 +7,9 @@ protocol LicenseInputDelegate: AnyObject {
 class LicenseInputViewController: UIViewController {
     weak var delegate: LicenseInputDelegate?
     
+    // Variable to enable/disable virtual keyboard
+    var isVirtualKeyboardEnabled: Bool = true
+    
     private let primaryColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0) // #F4AB43
 
     private let logoImageView: UIImageView = {
@@ -70,8 +73,20 @@ class LicenseInputViewController: UIViewController {
         tf.attributedPlaceholder = NSAttributedString(string: "kode aplikasi", attributes: [
             .foregroundColor: UIColor.black
         ])
+        // Disable default keyboard
+        tf.inputView = UIView()
         return tf
     }()
+    
+    private let keyboardView: UIView = {
+        let view = UIView()
+        view.backgroundColor = UIColor(red: 0.9, green: 0.9, blue: 0.9, alpha: 1.0)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+    
+    private var keyboardButtons: [UIButton] = []
+    private let deleteButton = UIButton(type: .system)
     
     private let submitButton: UIButton = {
         let button = UIButton(type: .system)
@@ -93,7 +108,7 @@ class LicenseInputViewController: UIViewController {
     }()
     
     private var countdownTimer: Timer?
-    private var countdownValue: Int = 5
+    private var countdownValue: Int = 8
     private var isCountdownActive = false
     private let countdownLabel: UILabel = {
         let label = UILabel()
@@ -125,10 +140,19 @@ class LicenseInputViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.95, green: 0.94, blue: 0.99, alpha: 1.0)
         setupLayout()
+        setupVirtualKeyboard()
         submitButton.addTarget(self, action: #selector(submitTapped), for: .touchUpInside)
         debugButton.addTarget(self, action: #selector(debugTapped), for: .touchUpInside)
         setupAutofillAndCountdown()
         setupInteractionObservers()
+        
+        // Auto-focus to text field and show keyboard
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.textField.becomeFirstResponder()
+            if self.isVirtualKeyboardEnabled {
+                self.showVirtualKeyboard()
+            }
+        }
     }
     
     private func setupLayout() {
@@ -137,6 +161,7 @@ class LicenseInputViewController: UIViewController {
         view.addSubview(appNameLabel)
         view.addSubview(cardView)
         view.addSubview(debugButton)
+        view.addSubview(keyboardView)
         cardView.addSubview(instructionLabel)
         cardView.addSubview(textField)
         cardView.addSubview(submitButton)
@@ -185,8 +210,20 @@ class LicenseInputViewController: UIViewController {
             loadingOverlay.topAnchor.constraint(equalTo: view.topAnchor),
             loadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+            loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            
+            keyboardView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            keyboardView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            keyboardView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            keyboardView.heightAnchor.constraint(equalToConstant: 220)
         ])
+        
+        // Show keyboard permanently if enabled
+        if isVirtualKeyboardEnabled {
+            keyboardView.isHidden = false
+            keyboardView.alpha = 1
+        }
+        
         // Fade-in animasi pada card
         cardView.alpha = 0
         UIView.animate(withDuration: 0.7, delay: 0.1, options: [.curveEaseIn], animations: {
@@ -202,7 +239,7 @@ class LicenseInputViewController: UIViewController {
     }
 
     private func startCountdown() {
-        countdownValue = 5
+        countdownValue = 8
         isCountdownActive = true
         countdownLabel.isHidden = false
         updateCountdownLabel()
@@ -245,6 +282,9 @@ class LicenseInputViewController: UIViewController {
         // Hilangkan fokus pada semua input
         view.endEditing(true)
         
+        // Hide keyboard
+        hideVirtualKeyboard()
+        
         // Disable tombol submit
         submitButton.isEnabled = false
         submitButton.backgroundColor = UIColor.gray
@@ -272,6 +312,9 @@ class LicenseInputViewController: UIViewController {
     @objc private func debugTapped() {
         // Hilangkan fokus pada semua input
         view.endEditing(true)
+        
+        // Hide keyboard
+        hideVirtualKeyboard()
         
         // Disable tombol submit
         submitButton.isEnabled = false
@@ -374,6 +417,111 @@ class LicenseInputViewController: UIViewController {
             }
         }
         task.resume()
+    }
+    
+    private func setupVirtualKeyboard() {
+        // Add tap gesture to textField to show keyboard
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(showVirtualKeyboard))
+        textField.addGestureRecognizer(tapGesture)
+        textField.isUserInteractionEnabled = true
+        
+        // Don't show virtual keyboard if disabled
+        if !isVirtualKeyboardEnabled {
+            textField.inputView = nil
+            return
+        }
+        
+        // Setup keyboard keys with QWERTY layout
+        let keyLabels = [
+            ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+            ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+            ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+            ["Z", "X", "C", "V", "B", "N", "M", "⌫"]
+        ]
+        
+        let buttonWidth: CGFloat = 30
+        let buttonHeight: CGFloat = 40
+        let horizontalSpacing: CGFloat = 5
+        let verticalSpacing: CGFloat = 10
+        
+        for (rowIndex, row) in keyLabels.enumerated() {
+            // Calculate row offset for centering
+            let totalRowWidth = CGFloat(row.count) * (buttonWidth + horizontalSpacing) - horizontalSpacing
+            let rowOffset = (view.frame.width - totalRowWidth) / 2
+            
+            for (colIndex, keyLabel) in row.enumerated() {
+                let button = UIButton(type: .system)
+                button.setTitle(keyLabel, for: .normal)
+                button.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+                button.backgroundColor = .white
+                button.setTitleColor(.black, for: .normal)
+                button.layer.cornerRadius = 6
+                button.translatesAutoresizingMaskIntoConstraints = false
+                
+                keyboardView.addSubview(button)
+                
+                // Position button
+                NSLayoutConstraint.activate([
+                    button.widthAnchor.constraint(equalToConstant: buttonWidth),
+                    button.heightAnchor.constraint(equalToConstant: buttonHeight),
+                    button.leadingAnchor.constraint(equalTo: keyboardView.leadingAnchor, constant: rowOffset + CGFloat(colIndex) * (buttonWidth + horizontalSpacing)),
+                    button.topAnchor.constraint(equalTo: keyboardView.topAnchor, constant: 15 + CGFloat(rowIndex) * (buttonHeight + verticalSpacing))
+                ])
+                
+                if keyLabel == "⌫" {
+                    deleteButton.setTitle(keyLabel, for: .normal)
+                    deleteButton.titleLabel?.font = UIFont.systemFont(ofSize: 18, weight: .medium)
+                    deleteButton.backgroundColor = .white
+                    deleteButton.setTitleColor(.systemRed, for: .normal)
+                    deleteButton.layer.cornerRadius = 6
+                    deleteButton.translatesAutoresizingMaskIntoConstraints = false
+                    
+                    keyboardView.addSubview(deleteButton)
+                    
+                    NSLayoutConstraint.activate([
+                        deleteButton.widthAnchor.constraint(equalToConstant: buttonWidth),
+                        deleteButton.heightAnchor.constraint(equalToConstant: buttonHeight),
+                        deleteButton.leadingAnchor.constraint(equalTo: keyboardView.leadingAnchor, constant: rowOffset + CGFloat(colIndex) * (buttonWidth + horizontalSpacing)),
+                        deleteButton.topAnchor.constraint(equalTo: keyboardView.topAnchor, constant: 15 + CGFloat(rowIndex) * (buttonHeight + verticalSpacing))
+                    ])
+                    
+                    deleteButton.addTarget(self, action: #selector(deleteButtonTapped), for: .touchUpInside)
+                } else {
+                    keyboardButtons.append(button)
+                    button.addTarget(self, action: #selector(keyTapped(_:)), for: .touchUpInside)
+                }
+            }
+        }
+    }
+    
+    @objc private func showVirtualKeyboard() {
+        // Only show virtual keyboard if enabled
+        if isVirtualKeyboardEnabled {
+            keyboardView.isHidden = false
+            keyboardView.alpha = 1
+        } else {
+            // Use default iOS keyboard if virtual keyboard is disabled
+            textField.inputView = nil
+            textField.becomeFirstResponder()
+        }
+    }
+    
+    @objc private func hideVirtualKeyboard() {
+        keyboardView.isHidden = true
+    }
+    
+    @objc private func keyTapped(_ sender: UIButton) {
+        guard let digit = sender.titleLabel?.text else { return }
+        textField.text = (textField.text ?? "") + digit
+        userDidInteract()
+    }
+    
+    @objc private func deleteButtonTapped() {
+        if var text = textField.text, !text.isEmpty {
+            text.removeLast()
+            textField.text = text
+        }
+        userDidInteract()
     }
 }
 
