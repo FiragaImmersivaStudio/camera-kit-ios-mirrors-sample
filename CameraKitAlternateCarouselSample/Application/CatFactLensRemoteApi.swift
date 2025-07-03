@@ -56,6 +56,8 @@ class CatFactRemoteApiService: NSObject, LensRemoteApiService {
                 body: data)
 
             responseHandler(.answered, apiResponse)
+
+            print("[CatFactRemoteApiService] Request data: \(String(data: data ?? Data(), encoding: .utf8) ?? "no data")")
         }
 
         task.resume()

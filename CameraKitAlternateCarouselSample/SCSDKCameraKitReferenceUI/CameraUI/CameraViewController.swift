@@ -113,6 +113,9 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
             cameraView.updateFlipButton(isInFullScreen: true)
         }
     }
+    
+    /// Flag to track if PreviewViewController is currently active
+    private var isPreviewActive: Bool = false
 
     override open func loadView() {
         view = cameraView
@@ -151,10 +154,65 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         cameraController.loadSavedSettings()
+        // Add keyboard observer
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow), name: UIResponder.keyboardDidShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidHide), name: UIResponder.keyboardDidHideNotification, object: nil)
+        // Add preview state observers
+        NotificationCenter.default.addObserver(self, selector: #selector(previewDidAppear), name: .previewDidAppear, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(previewDidDisappear), name: .previewDidDisappear, object: nil)
+        // Add key press observer
+        becomeFirstResponder()
+    }
+
+    override open var canBecomeFirstResponder: Bool {
+        return true
+    }
+
+    @objc private func keyboardDidShow(notification: Notification) {}
+    @objc private func keyboardDidHide(notification: Notification) {}
+    
+    @objc private func previewDidAppear(notification: Notification) {
+        isPreviewActive = true
+        print("🔍 Debug: Preview appeared, disabling space key in camera")
+    }
+    
+    @objc private func previewDidDisappear(notification: Notification) {
+        isPreviewActive = false
+        print("🔍 Debug: Preview disappeared, enabling space key in camera")
+        // Become first responder again to handle key presses
+        becomeFirstResponder()
+        print("🔍 Debug: CameraViewController became first responder again: \(isFirstResponder)")
+    }
+
+    // Handle key press (spasi)
+    override open func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        super.pressesBegan(presses, with: event)
+        
+        print("🔍 Debug: CameraViewController pressesBegan called, isPreviewActive: \(isPreviewActive)")
+        
+        // Skip space key handling if preview is active
+        if isPreviewActive {
+            print("🔍 Debug: Skipping R key handling - preview is active")
+            return
+        }
+        
+        for press in presses {
+            if press.key?.keyCode == .keyboardR {
+                // Set variable jika sedang di CameraKit
+                CaptureRemoteApiService.isButtonPressedWhileOnLens = true
+                // print debug
+                print("🔍 Debug: 'R' key pressed while on lens")
+            }
+        }
     }
 
     override open func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        // Remove observers
+        NotificationCenter.default.removeObserver(self, name: .previewDidAppear, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .previewDidDisappear, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardDidShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardDidHideNotification, object: nil)
     }
 
     // MARK: Init
@@ -220,6 +278,9 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
         cameraController.applyLens(lens) { [weak self] success in
             guard let strongSelf = self else { return }
             if success {
+                // Reset variable setiap kali lens di-apply
+                CaptureRemoteApiService.isButtonPressedWhileOnLens = false
+                print("🔍 Debug: Reset variable setiap kali lens di-apply")
                 print("\(lens.name ?? "Unnamed") (\(lens.id)) Applied")
 
                 DispatchQueue.main.async {
@@ -374,8 +435,8 @@ extension CameraViewController {
                 let durationString = userInfo["duration"] as? String
                 let duration = TimeInterval(durationString ?? "10.0") ?? 10.0
                 
-                // Pastikan durasi berada dalam batasan yang wajar (antara 3-30 detik)
-                let finalDuration = min(max(duration, 3.0), 30.0)
+                // Pastikan durasi berada dalam batasan yang wajar (antara 3-59 detik)
+                let finalDuration = min(max(duration, 3.0), 59.0)
                 
                 print("Received video recording request with duration: \(finalDuration) seconds")
                 
@@ -872,8 +933,8 @@ extension CameraViewController {
 extension CameraViewController {
     public override var keyCommands: [UIKeyCommand]? {
         return [
-            UIKeyCommand(input: "n", modifierFlags: [], action: #selector(handlePhotoKey(_:))),
-            UIKeyCommand(input: "m", modifierFlags: [], action: #selector(handleRecordKey(_:)))
+            // UIKeyCommand(input: "n", modifierFlags: [], action: #selector(handlePhotoKey(_:))), // Dinonaktifkan: shortcut keyboard 'n' untuk foto
+            // UIKeyCommand(input: "m", modifierFlags: [], action: #selector(handleRecordKey(_:))) // Dinonaktifkan: shortcut keyboard 'm' untuk rekam video
         ]
     }
     
@@ -892,4 +953,10 @@ extension CameraViewController {
             cameraButtonHoldBegan(cameraView.cameraButton)
         }
     }
+}
+
+// MARK: Notification Names Extension
+extension Notification.Name {
+    static let previewDidAppear = Notification.Name("previewDidAppear")
+    static let previewDidDisappear = Notification.Name("previewDidDisappear")
 }

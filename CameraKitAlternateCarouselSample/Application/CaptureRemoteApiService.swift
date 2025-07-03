@@ -16,6 +16,9 @@ class CaptureRemoteApiServiceProvider: NSObject, LensRemoteApiServiceProvider {
 
 /// Service that processes capture requests from Lens
 class CaptureRemoteApiService: NSObject, LensRemoteApiService {
+    // Static/shared variable to track button state
+    static var isButtonPressedWhileOnLens: Bool = false
+    
     func processRequest(
         _ request: LensRemoteApiRequest,
         responseHandler: @escaping (LensRemoteApiServiceCallStatus, LensRemoteApiResponseProtocol) -> Void
@@ -65,6 +68,8 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
                 )
                 
                 responseHandler(.answered, response)
+
+                print("[CaptureRemoteApiService] Request data: \(String(data: response.body ?? Data(), encoding: .utf8) ?? "no data")")
             } else {
                 // Body exists but could not be parsed as JSON
                 let errorResponse = LensRemoteApiResponse(
@@ -221,6 +226,37 @@ class CaptureRemoteApiService: NSObject, LensRemoteApiService {
                 let app = jsonDict["app"] as? String
 
                 print("Received handshake request from lens: \(app ?? "unknown")")
+
+                let response = LensRemoteApiResponse(
+                    request: request,
+                    status: .success,
+                    metadata: [:],
+                    body: "{ \"status\": \"handshake success\" }".data(using: .utf8)
+                )
+                responseHandler(.answered, response)
+            }
+        } else if endpointId == "beacon_check_button_1" {
+            // Beacon check every 2 seconds
+            if Self.isButtonPressedWhileOnLens {
+                // Reset after reporting
+                Self.isButtonPressedWhileOnLens = false
+                let response = LensRemoteApiResponse(
+                    request: request,
+                    status: .success,
+                    metadata: [:],
+                    body: "{ \"status\": \"begin_record\" }".data(using: .utf8)
+                )
+                responseHandler(.answered, response)
+                print("🔍 Debug: Beacon triggered, user pressing the button")
+            } else {
+                let response = LensRemoteApiResponse(
+                    request: request,
+                    status: .success,
+                    metadata: [:],
+                    body: "{ \"status\": \"idle\" }".data(using: .utf8)
+                )
+                responseHandler(.answered, response)
+                // print("🔍 Debug: Beacon triggered, user not pressing the button")
             }
         }
 

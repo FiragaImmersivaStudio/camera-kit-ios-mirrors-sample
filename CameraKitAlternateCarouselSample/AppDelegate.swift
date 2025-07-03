@@ -106,7 +106,7 @@ class SampleCameraController: CameraController {
 // MARK: - LicenseInputDelegate
 
 extension AppDelegate: LicenseInputDelegate {
-    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, cancelTimeout: Int?, isHide: Bool?) {
+    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, customColor: [String: String]?, cancelTimeout: Int?, isHide: Bool?) {
         if let id = partnerGroupId, !id.isEmpty {
             AppDelegate.Constants.partnerGroupId = id
         } else {
@@ -118,6 +118,15 @@ extension AppDelegate: LicenseInputDelegate {
             UserDefaults.standard.set(customText, forKey: "customText")
         } else {
             UserDefaults.standard.removeObject(forKey: "customText")
+        }
+        
+        // Store custom color in UserDefaults if available
+        if let customColor = customColor {
+            print("🎨 Debug: Saving customColor to UserDefaults: \(customColor)")
+            UserDefaults.standard.set(customColor, forKey: "customColor")
+        } else {
+            print("🎨 Debug: No customColor received, removing from UserDefaults")
+            UserDefaults.standard.removeObject(forKey: "customColor")
         }
         
         // Store cancel timeout as a simple static property for easy access

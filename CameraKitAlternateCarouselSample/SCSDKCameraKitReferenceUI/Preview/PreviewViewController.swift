@@ -10,10 +10,19 @@ public class PreviewViewController: UIViewController {
     /// Callback when user presses close button and dismisses preview view controller
     public var onDismiss: (() -> Void)?
 
+    /// Store original button colors for focus management
+    private var buttonOriginalColors: [UIButton: UIColor] = [:]
+    
     /// Currently focused button
     private var focusedButton: UIButton? {
         didSet {
-            oldValue?.backgroundColor = .systemGray
+            // Restore old button's original color
+            if let oldButton = oldValue,
+               let originalColor = buttonOriginalColors[oldButton] {
+                oldButton.backgroundColor = originalColor
+            }
+            
+            // Set focused button to blue
             focusedButton?.backgroundColor = .systemBlue
         }
     }
@@ -22,6 +31,10 @@ public class PreviewViewController: UIViewController {
     private var cancelTimeoutTimer: Timer?
     private var cancelTimeoutValue: Int = 0
     private var originalCancelText: String = ""
+    
+    /// Timer for QR code timeout
+    private var qrCodeTimeoutTimer: Timer?
+    private var qrCodeTimeoutValue: Int = 30 // 30 seconds timeout for QR code
 
     /// Get custom button text from UserDefaults with fallback to default
     private func getButtonText(for key: String, defaultText: String) -> String {
@@ -30,6 +43,33 @@ public class PreviewViewController: UIViewController {
             return defaultText
         }
         return text
+    }
+    
+    /// Get custom button color from UserDefaults with fallback to default
+    private func getButtonColor(for key: String, defaultColor: UIColor) -> UIColor {
+        print("🎨 Debug: getButtonColor called for key: \(key)")
+        
+        guard let customColor = UserDefaults.standard.dictionary(forKey: "customColor") as? [String: String] else {
+            print("🎨 Debug: No customColor found in UserDefaults")
+            return defaultColor
+        }
+        
+        print("🎨 Debug: customColor dictionary: \(customColor)")
+        
+        guard let colorHex = customColor[key], !colorHex.isEmpty else {
+            print("🎨 Debug: No color found for key '\(key)' or empty value")
+            return defaultColor
+        }
+        
+        print("🎨 Debug: Found hex color '\(colorHex)' for key '\(key)'")
+        
+        if let parsedColor = UIColor(hex: colorHex) {
+            print("🎨 Debug: Successfully parsed color: \(parsedColor)")
+            return parsedColor
+        } else {
+            print("🎨 Debug: Failed to parse hex color '\(colorHex)'")
+            return defaultColor
+        }
     }
 
     // MARK: View Properties
@@ -95,6 +135,20 @@ public class PreviewViewController: UIViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
+    
+    fileprivate let qrCodeCountdownLabel: UILabel = {
+        let label = UILabel()
+        label.text = "QR code akan hilang dalam 30 detik"
+        label.textColor = .white
+        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.textAlignment = .center
+        label.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        label.layer.cornerRadius = 8
+        label.clipsToBounds = true
+        label.isHidden = true
+        label.translatesAutoresizingMaskIntoConstraints = false
+        return label
+    }()
 
     fileprivate lazy var uploadButtonStackView: UIStackView = {
         let stackView = UIStackView(arrangedSubviews: [uploadButton, cancelButton])
@@ -112,6 +166,36 @@ public class PreviewViewController: UIViewController {
         super.viewDidLoad()
         setup()
     }
+    
+    override public func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Refresh colors in case they were updated after initial setup
+        refreshButtonColors()
+        
+        // Become first responder to handle keyboard commands
+        becomeFirstResponder()
+        print("🔍 Debug: PreviewViewController became first responder: \(isFirstResponder)")
+        
+        // Notify that preview is now active
+        NotificationCenter.default.post(name: .previewDidAppear, object: nil)
+        print("🔍 Debug: PreviewViewController appeared, posted notification")
+    }
+    
+    private func refreshButtonColors() {
+        print("🎨 Debug: Refreshing button colors...")
+        
+        let uploadColor = getButtonColor(for: "button_upload", defaultColor: .systemGray)
+        let cancelColor = getButtonColor(for: "button_cancel", defaultColor: .systemGray)
+        
+        uploadButton.backgroundColor = uploadColor
+        cancelButton.backgroundColor = cancelColor
+        
+        // Update stored original colors
+        buttonOriginalColors[uploadButton] = uploadColor
+        buttonOriginalColors[cancelButton] = cancelColor
+        
+        print("🎨 Debug: Colors refreshed - upload: \(uploadColor), cancel: \(cancelColor)")
+    }
 
     private func setup() {
         view.backgroundColor = .black
@@ -121,16 +205,56 @@ public class PreviewViewController: UIViewController {
         setupOverlayView()
         setupQRCodeView()
         
+        // Test hex color parsing
+        testHexColorParsing()
+        
         // Configure button titles with custom text
         uploadButton.setTitle(getButtonText(for: "button_upload", defaultText: "Upload"), for: .normal)
         originalCancelText = getButtonText(for: "button_cancel", defaultText: "Cancel")
         cancelButton.setTitle(originalCancelText, for: .normal)
+        
+        // Configure button colors with custom color
+        let uploadColor = getButtonColor(for: "button_upload", defaultColor: .systemGray)
+        let cancelColor = getButtonColor(for: "button_cancel", defaultColor: .systemGray)
+        
+        print("🎨 Debug: Setting uploadButton color to: \(uploadColor)")
+        print("🎨 Debug: Setting cancelButton color to: \(cancelColor)")
+        
+        uploadButton.backgroundColor = uploadColor
+        cancelButton.backgroundColor = cancelColor
+        
+        // Store original colors for focus management
+        buttonOriginalColors[uploadButton] = uploadColor
+        buttonOriginalColors[cancelButton] = cancelColor
+        
+        print("🎨 Debug: buttonOriginalColors: \(buttonOriginalColors)")
         
         // Setup cancel timeout if available
         setupCancelTimeout()
         
         // Set initial focus
         focusedButton = uploadButton
+    }
+    
+    private func testHexColorParsing() {
+        print("🎨 Debug: Testing hex color parsing...")
+        
+        // Test various hex formats
+        let testColors = ["#FBDD12", "#FF5722", "FBDD12", "ff5722", "#000000", "#FFFFFF"]
+        
+        for hexString in testColors {
+            if let color = UIColor(hex: hexString) {
+                print("🎨 Debug: Successfully parsed '\(hexString)' -> \(color)")
+            } else {
+                print("🎨 Debug: Failed to parse '\(hexString)'")
+            }
+        }
+        
+        // Add test custom colors for debugging (uncomment for manual testing)
+        // let testCustomColor = ["button_upload": "#FBDD12", "button_cancel": "#FF5722"]
+        // UserDefaults.standard.set(testCustomColor, forKey: "customColor")
+        // UserDefaults.standard.synchronize()
+        // print("🎨 Debug: Added test custom colors: \(testCustomColor)")
     }
 
     private func setupCancelTimeout() {
@@ -190,17 +314,64 @@ public class PreviewViewController: UIViewController {
         cancelTimeoutTimer = nil
         cancelButton.setTitle(originalCancelText, for: .normal)
     }
+    
+    private func startQRCodeTimeout() {
+        print("🔍 Debug: startQRCodeTimeout called with value: \(qrCodeTimeoutValue)")
+        qrCodeTimeoutTimer?.invalidate()
+        
+        updateQRCodeCountdownLabel()
+        
+        qrCodeTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            self.qrCodeTimeoutValue -= 1
+            print("🔍 Debug: QR Code Timer tick - qrCodeTimeoutValue: \(self.qrCodeTimeoutValue)")
+            
+            if self.qrCodeTimeoutValue <= 0 {
+                print("🔍 Debug: QR Code timeout reached 0 - auto closing")
+                self.qrCodeTimeoutTimer?.invalidate()
+                self.qrCodeTimeoutTimer = nil
+                // Auto close QR code when timeout reaches 0
+                self.qrCodeCloseButtonPressed(self.qrCodeCloseButton)
+            } else {
+                self.updateQRCodeCountdownLabel()
+            }
+        }
+        print("🔍 Debug: QR Code timer scheduled successfully")
+    }
+    
+    private func updateQRCodeCountdownLabel() {
+        let countdownText = "QR code akan hilang dalam \(qrCodeTimeoutValue) detik"
+        print("🔍 Debug: Updating QR code countdown text to: \(countdownText)")
+        qrCodeCountdownLabel.text = countdownText
+    }
+    
+    private func stopQRCodeTimeout() {
+        print("🔍 Debug: stopQRCodeTimeout called")
+        qrCodeTimeoutTimer?.invalidate()
+        qrCodeTimeoutTimer = nil
+        qrCodeCountdownLabel.isHidden = true
+    }
 
+    // MARK: First Responder
+    
+    public override var canBecomeFirstResponder: Bool {
+        return true
+    }
+    
     // MARK: Keyboard Commands
     
     public override var keyCommands: [UIKeyCommand]? {
-        return [
+        let commands = [
             UIKeyCommand(input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(handleEscapeKey(_:)), discoverabilityTitle: "Back/Cancel"),
-            UIKeyCommand(input: " ", modifierFlags: [], action: #selector(handleSpaceKey(_:)), discoverabilityTitle: "Select/Confirm")
+            UIKeyCommand(input: "r", modifierFlags: [], action: #selector(handleSpaceKey(_:)), discoverabilityTitle: "Select/Confirm")
         ]
+        print("🔍 Debug: keyCommands called, returning \(commands.count) commands")
+        return commands
     }
 
     @objc private func handleEscapeKey(_ sender: UIKeyCommand) {
+        print("🔍 Debug: handleEscapeKey called")
         if qrCodeImageView.isHidden == false {
             // If QR code is visible, close it and the preview
             qrCodeCloseButtonPressed(qrCodeCloseButton)
@@ -212,20 +383,26 @@ public class PreviewViewController: UIViewController {
     }
 
     @objc private func handleSpaceKey(_ sender: UIKeyCommand) {
+        print("🔍 Debug: handleSpaceKey called! Focused button: \(String(describing: focusedButton))")
         if let focused = focusedButton {
             // Trigger the focused button's action
             if focused == uploadButton {
+                print("🔍 Debug: Triggering upload button")
                 uploadButtonPressed(uploadButton)
             } else if focused == cancelButton {
+                print("🔍 Debug: Triggering cancel button")
                 cancelButtonPressed(cancelButton)
             } else if focused == closeButton {
+                print("🔍 Debug: Triggering close button")
                 closeButtonPressed(closeButton)
             } else if focused == qrCodeCloseButton {
+                print("🔍 Debug: Triggering QR code close button")
                 qrCodeCloseButtonPressed(qrCodeCloseButton)
                 closeButtonPressed(closeButton)
             }
         } else {
             // If no button is focused, focus the upload button
+            print("🔍 Debug: No button focused, setting focus to upload button")
             focusedButton = uploadButton
         }
     }
@@ -254,13 +431,29 @@ public class PreviewViewController: UIViewController {
         overlayView.isHidden = true
         focusedButton = uploadButton
         
-        // Restart cancel timeout after loading if needed
-        setupCancelTimeout()
+        // Only restart cancel timeout if upload buttons will remain visible
+        // (they will be hidden when QR code is shown)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self = self else { return }
+            // Check if upload buttons are still visible after a short delay
+            if !self.uploadButtonStackView.isHidden {
+                self.setupCancelTimeout()
+            }
+        }
     }
     
     override public func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         stopCancelTimeout()
+        stopQRCodeTimeout()
+        
+        // Resign first responder to give control back to camera
+        resignFirstResponder()
+        print("🔍 Debug: PreviewViewController resigned first responder")
+        
+        // Notify that preview is no longer active
+        NotificationCenter.default.post(name: .previewDidDisappear, object: nil)
+        print("🔍 Debug: PreviewViewController disappearing, posted notification")
     }
 }
 
@@ -340,12 +533,18 @@ extension PreviewViewController {
     fileprivate func setupQRCodeView() {
         view.addSubview(qrCodeImageView)
         view.addSubview(qrCodeCloseButton)
+        view.addSubview(qrCodeCountdownLabel)
         
         NSLayoutConstraint.activate([
             qrCodeImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             qrCodeImageView.centerYAnchor.constraint(equalTo: view.centerYAnchor),
             qrCodeImageView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.7),
             qrCodeImageView.heightAnchor.constraint(equalTo: qrCodeImageView.widthAnchor),
+            
+            qrCodeCountdownLabel.topAnchor.constraint(equalTo: qrCodeImageView.topAnchor, constant: -50),
+            qrCodeCountdownLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            qrCodeCountdownLabel.widthAnchor.constraint(equalToConstant: 280),
+            qrCodeCountdownLabel.heightAnchor.constraint(equalToConstant: 36),
             
             qrCodeCloseButton.topAnchor.constraint(equalTo: qrCodeImageView.bottomAnchor, constant: 16),
             qrCodeCloseButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -357,19 +556,65 @@ extension PreviewViewController {
     }
     
     @objc private func qrCodeCloseButtonPressed(_ sender: UIButton) {
+        stopQRCodeTimeout()
         qrCodeImageView.isHidden = true
         qrCodeCloseButton.isHidden = true
+        qrCodeCountdownLabel.isHidden = true
         overlayView.isHidden = true
         uploadButtonStackView.isHidden = false
         closeButtonPressed(closeButton)
     }
     
     func showQRCode(_ qrCodeImage: UIImage) {
+        // Stop cancel button timeout since upload buttons are hidden when QR code is shown
+        stopCancelTimeout()
+        
         qrCodeImageView.image = qrCodeImage
         qrCodeImageView.isHidden = false
         qrCodeCloseButton.isHidden = false
+        qrCodeCountdownLabel.isHidden = false
         overlayView.isHidden = false
         uploadButtonStackView.isHidden = true
         focusedButton = qrCodeCloseButton
+        
+        // Reset timeout value and start countdown
+        qrCodeTimeoutValue = 30
+        startQRCodeTimeout()
+    }
+}
+
+// MARK: - UIColor Extension for Hex Support
+
+extension UIColor {
+    convenience init?(hex: String) {
+        let r, g, b: CGFloat
+        
+        var hexColor = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if hexColor.hasPrefix("#") {
+            hexColor.removeFirst()
+        }
+        
+        print("🎨 Debug: Parsing hex color '\(hex)' -> cleaned: '\(hexColor)'")
+        
+        guard hexColor.count == 6 else {
+            print("🎨 Debug: Invalid hex length: \(hexColor.count), expected 6")
+            return nil
+        }
+        
+        let scanner = Scanner(string: hexColor)
+        var hexNumber: UInt64 = 0
+        
+        guard scanner.scanHexInt64(&hexNumber) else {
+            print("🎨 Debug: Failed to scan hex number from '\(hexColor)'")
+            return nil
+        }
+        
+        r = CGFloat((hexNumber & 0xff0000) >> 16) / 255
+        g = CGFloat((hexNumber & 0x00ff00) >> 8) / 255
+        b = CGFloat(hexNumber & 0x0000ff) / 255
+        
+        print("🎨 Debug: Parsed RGB: r=\(r), g=\(g), b=\(b)")
+        
+        self.init(red: r, green: g, blue: b, alpha: 1.0)
     }
 }
