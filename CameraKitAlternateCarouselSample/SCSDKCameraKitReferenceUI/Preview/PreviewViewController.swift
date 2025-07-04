@@ -13,6 +13,9 @@ public class PreviewViewController: UIViewController {
     /// Store original button colors for focus management
     private var buttonOriginalColors: [UIButton: UIColor] = [:]
     
+    /// Store original button text colors for focus management
+    private var buttonOriginalTextColors: [UIButton: UIColor] = [:]
+    
     /// Currently focused button
     private var focusedButton: UIButton? {
         didSet {
@@ -68,6 +71,33 @@ public class PreviewViewController: UIViewController {
             return parsedColor
         } else {
             print("🎨 Debug: Failed to parse hex color '\(colorHex)'")
+            return defaultColor
+        }
+    }
+
+    /// Get custom button text color from UserDefaults with fallback to default
+    private func getButtonTextColor(for key: String, defaultColor: UIColor) -> UIColor {
+        print("🎨 Debug: getButtonTextColor called for key: \(key)")
+        
+        guard let customText = UserDefaults.standard.dictionary(forKey: "customText") as? [String: String] else {
+            print("🎨 Debug: No customText found in UserDefaults")
+            return defaultColor
+        }
+        
+        print("🎨 Debug: customText dictionary: \(customText)")
+        
+        guard let colorHex = customText[key], !colorHex.isEmpty else {
+            print("🎨 Debug: No text color found for key '\(key)' or empty value")
+            return defaultColor
+        }
+        
+        print("🎨 Debug: Found hex text color '\(colorHex)' for key '\(key)'")
+        
+        if let parsedColor = UIColor(hex: colorHex) {
+            print("🎨 Debug: Successfully parsed text color: \(parsedColor)")
+            return parsedColor
+        } else {
+            print("🎨 Debug: Failed to parse hex text color '\(colorHex)'")
             return defaultColor
         }
     }
@@ -187,14 +217,25 @@ public class PreviewViewController: UIViewController {
         let uploadColor = getButtonColor(for: "button_upload", defaultColor: .systemGray)
         let cancelColor = getButtonColor(for: "button_cancel", defaultColor: .systemGray)
         
+        let uploadTextColor = getButtonTextColor(for: "button_upload_color", defaultColor: .white)
+        let cancelTextColor = getButtonTextColor(for: "button_cancel_color", defaultColor: .white)
+        
         uploadButton.backgroundColor = uploadColor
         cancelButton.backgroundColor = cancelColor
+        
+        uploadButton.setTitleColor(uploadTextColor, for: .normal)
+        cancelButton.setTitleColor(cancelTextColor, for: .normal)
         
         // Update stored original colors
         buttonOriginalColors[uploadButton] = uploadColor
         buttonOriginalColors[cancelButton] = cancelColor
         
+        // Update stored original text colors
+        buttonOriginalTextColors[uploadButton] = uploadTextColor
+        buttonOriginalTextColors[cancelButton] = cancelTextColor
+        
         print("🎨 Debug: Colors refreshed - upload: \(uploadColor), cancel: \(cancelColor)")
+        print("🎨 Debug: Text colors refreshed - upload: \(uploadTextColor), cancel: \(cancelTextColor)")
     }
 
     private func setup() {
@@ -217,17 +258,30 @@ public class PreviewViewController: UIViewController {
         let uploadColor = getButtonColor(for: "button_upload", defaultColor: .systemGray)
         let cancelColor = getButtonColor(for: "button_cancel", defaultColor: .systemGray)
         
+        let uploadTextColor = getButtonTextColor(for: "button_upload_color", defaultColor: .white)
+        let cancelTextColor = getButtonTextColor(for: "button_cancel_color", defaultColor: .white)
+        
         print("🎨 Debug: Setting uploadButton color to: \(uploadColor)")
         print("🎨 Debug: Setting cancelButton color to: \(cancelColor)")
+        print("🎨 Debug: Setting uploadButton text color to: \(uploadTextColor)")
+        print("🎨 Debug: Setting cancelButton text color to: \(cancelTextColor)")
         
         uploadButton.backgroundColor = uploadColor
         cancelButton.backgroundColor = cancelColor
+        
+        uploadButton.setTitleColor(uploadTextColor, for: .normal)
+        cancelButton.setTitleColor(cancelTextColor, for: .normal)
         
         // Store original colors for focus management
         buttonOriginalColors[uploadButton] = uploadColor
         buttonOriginalColors[cancelButton] = cancelColor
         
+        // Store original text colors for focus management
+        buttonOriginalTextColors[uploadButton] = uploadTextColor
+        buttonOriginalTextColors[cancelButton] = cancelTextColor
+        
         print("🎨 Debug: buttonOriginalColors: \(buttonOriginalColors)")
+        print("🎨 Debug: buttonOriginalTextColors: \(buttonOriginalTextColors)")
         
         // Setup cancel timeout if available
         setupCancelTimeout()
@@ -255,6 +309,17 @@ public class PreviewViewController: UIViewController {
         // UserDefaults.standard.set(testCustomColor, forKey: "customColor")
         // UserDefaults.standard.synchronize()
         // print("🎨 Debug: Added test custom colors: \(testCustomColor)")
+        
+        // Add test custom text colors for debugging (uncomment for manual testing)
+        // let testCustomText = [
+        //     "button_upload": "Upload",
+        //     "button_cancel": "Cancel", 
+        //     "button_upload_color": "#000000",
+        //     "button_cancel_color": "#FFFFFF"
+        // ]
+        // UserDefaults.standard.set(testCustomText, forKey: "customText")
+        // UserDefaults.standard.synchronize()
+        // print("🎨 Debug: Added test custom text colors: \(testCustomText)")
     }
 
     private func setupCancelTimeout() {
