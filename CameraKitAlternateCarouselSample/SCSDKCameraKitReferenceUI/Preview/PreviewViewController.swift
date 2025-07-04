@@ -34,7 +34,7 @@ public class PreviewViewController: UIViewController {
     
     /// Timer for QR code timeout
     private var qrCodeTimeoutTimer: Timer?
-    private var qrCodeTimeoutValue: Int = 30 // 30 seconds timeout for QR code
+    private var qrCodeTimeoutValue: Int = 20 // 30 seconds timeout for QR code
 
     /// Get custom button text from UserDefaults with fallback to default
     private func getButtonText(for key: String, defaultText: String) -> String {
@@ -138,7 +138,7 @@ public class PreviewViewController: UIViewController {
     
     fileprivate let qrCodeCountdownLabel: UILabel = {
         let label = UILabel()
-        label.text = "QR code akan hilang dalam 30 detik"
+        label.text = "QR code akan hilang dalam 20 detik"
         label.textColor = .white
         label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
         label.textAlignment = .center
@@ -571,14 +571,14 @@ extension PreviewViewController {
         
         qrCodeImageView.image = qrCodeImage
         qrCodeImageView.isHidden = false
-        qrCodeCloseButton.isHidden = false
+        qrCodeCloseButton.isHidden = true
         qrCodeCountdownLabel.isHidden = false
         overlayView.isHidden = false
         uploadButtonStackView.isHidden = true
-        focusedButton = qrCodeCloseButton
+        focusedButton = nil
         
         // Reset timeout value and start countdown
-        qrCodeTimeoutValue = 30
+        qrCodeTimeoutValue = 20
         startQRCodeTimeout()
     }
 }

@@ -112,7 +112,7 @@ class LicenseInputViewController: UIViewController {
     private var isCountdownActive = false
     // Timer untuk mendeteksi inaktivitas pengguna
     private var inactivityTimer: Timer?
-    private let inactivityDuration: TimeInterval = 30.0
+    private let inactivityDuration: TimeInterval = 15.0
     private let countdownLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
