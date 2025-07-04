@@ -110,6 +110,9 @@ class LicenseInputViewController: UIViewController {
     private var countdownTimer: Timer?
     private var countdownValue: Int = 8
     private var isCountdownActive = false
+    // Timer untuk mendeteksi inaktivitas pengguna
+    private var inactivityTimer: Timer?
+    private let inactivityDuration: TimeInterval = 30.0
     private let countdownLabel: UILabel = {
         let label = UILabel()
         label.textAlignment = .center
@@ -239,6 +242,8 @@ class LicenseInputViewController: UIViewController {
     }
 
     private func startCountdown() {
+        // Matikan timer inaktivitas ketika countdown dimulai
+        inactivityTimer?.invalidate()
         countdownValue = 8
         isCountdownActive = true
         countdownLabel.isHidden = false
@@ -276,6 +281,8 @@ class LicenseInputViewController: UIViewController {
         if isCountdownActive {
             cancelCountdown()
         }
+        // Setel ulang timer inaktivitas setiap ada interaksi
+        resetInactivityTimer()
     }
     
     @objc private func submitTapped() {
@@ -538,6 +545,19 @@ class LicenseInputViewController: UIViewController {
             textField.text = text
         }
         userDidInteract()
+    }
+
+    // Reset / mulai ulang timer inaktivitas
+    private func resetInactivityTimer() {
+        inactivityTimer?.invalidate()
+        inactivityTimer = Timer.scheduledTimer(timeInterval: inactivityDuration, target: self, selector: #selector(inactivityTimerFired), userInfo: nil, repeats: false)
+    }
+
+    @objc private func inactivityTimerFired() {
+        // Mulai ulang countdown hanya jika belum aktif
+        if !isCountdownActive {
+            startCountdown()
+        }
     }
 }
 
