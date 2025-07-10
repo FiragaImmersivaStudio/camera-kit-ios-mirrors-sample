@@ -54,6 +54,12 @@ public class ImagePreviewViewController: PreviewViewController {
     // MARK: Action Overrides
 
     override func uploadPreview() {
+        // Validate upload interval before proceeding
+        guard validateUploadInterval() else {
+            print("🚫 Image Upload blocked due to interval validation")
+            return
+        }
+        
         guard let imageData = image.jpegData(compressionQuality: 0.8) else { return }
         
         showLoading()

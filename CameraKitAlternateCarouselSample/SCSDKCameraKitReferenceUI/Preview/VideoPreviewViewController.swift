@@ -66,6 +66,12 @@ public class VideoPreviewViewController: PreviewViewController {
     // MARK: Action Overrides
 
     override func uploadPreview() {
+        // Validate upload interval before proceeding
+        guard validateUploadInterval() else {
+            print("🚫 Video Upload blocked due to interval validation")
+            return
+        }
+        
         do {
             let videoData = try Data(contentsOf: videoUrl)
             

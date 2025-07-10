@@ -16,6 +16,9 @@ public class PreviewViewController: UIViewController {
     /// Store original button text colors for focus management
     private var buttonOriginalTextColors: [UIButton: UIColor] = [:]
     
+    /// Static property to track last upload timestamp across all preview instances
+    private static var lastUploadTimestamp: Date?
+    
     /// Currently focused button
     private var focusedButton: UIButton? {
         didSet {
@@ -99,6 +102,30 @@ public class PreviewViewController: UIViewController {
         } else {
             print("🎨 Debug: Failed to parse hex text color '\(colorHex)'")
             return defaultColor
+        }
+    }
+    
+    /// Validate if upload is allowed based on interval settings
+    internal func validateUploadInterval() -> Bool {
+        let intervalUpload = AppDelegate.intervalUpload ?? 10 // Default 10 seconds
+        let currentTime = Date()
+        
+        // Check if this is the first upload
+        guard let lastUpload = PreviewViewController.lastUploadTimestamp else {
+            print("🔄 Upload Validation: First upload allowed")
+            PreviewViewController.lastUploadTimestamp = currentTime
+            return true
+        }
+        
+        let timeSinceLastUpload = currentTime.timeIntervalSince(lastUpload)
+        
+        if timeSinceLastUpload >= TimeInterval(intervalUpload) {
+            print("🔄 Upload Validation: Upload allowed - interval: \(timeSinceLastUpload)s (required: \(intervalUpload)s)")
+            PreviewViewController.lastUploadTimestamp = currentTime
+            return true
+        } else {
+            print("🚫 Upload Validation: Upload blocked - interval: \(timeSinceLastUpload)s (required: \(intervalUpload)s)")
+            return false
         }
     }
 

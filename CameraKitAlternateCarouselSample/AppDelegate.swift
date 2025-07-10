@@ -12,6 +12,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
         static var partnerGroupId = "845fe30b-b436-42a7-be3c-2da1c3390aa6" // default
         static var cancelTimeout: Int?
         static var isHide: Bool?
+        static var intervalUpload: Int?
     }
 
     var window: UIWindow?
@@ -28,6 +29,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, SnapchatDelegate {
     // Public getter for is_hide
     static var isHide: Bool? {
         return Constants.isHide
+    }
+    
+    // Public getter for interval upload
+    static var intervalUpload: Int? {
+        return Constants.intervalUpload
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -106,7 +112,7 @@ class SampleCameraController: CameraController {
 // MARK: - LicenseInputDelegate
 
 extension AppDelegate: LicenseInputDelegate {
-    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, customColor: [String: String]?, cancelTimeout: Int?, isHide: Bool?) {
+    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, customColor: [String: String]?, cancelTimeout: Int?, isHide: Bool?, intervalUpload: Int?) {
         if let id = partnerGroupId, !id.isEmpty {
             AppDelegate.Constants.partnerGroupId = id
         } else {
@@ -134,6 +140,9 @@ extension AppDelegate: LicenseInputDelegate {
         
         // Store is_hide for snap watermark visibility control
         AppDelegate.Constants.isHide = isHide
+        
+        // Store interval upload for upload validation
+        AppDelegate.Constants.intervalUpload = intervalUpload ?? 10 // Default 10 seconds
         
         UserDefaults.standard.synchronize()
         

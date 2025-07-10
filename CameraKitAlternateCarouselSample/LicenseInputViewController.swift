@@ -1,7 +1,7 @@
 import UIKit
 
 protocol LicenseInputDelegate: AnyObject {
-    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, customColor: [String: String]?, cancelTimeout: Int?, isHide: Bool?)
+    func didReceivePartnerGroupId(_ partnerGroupId: String?, customText: [String: String]?, customColor: [String: String]?, cancelTimeout: Int?, isHide: Bool?, intervalUpload: Int?)
 }
 
 class LicenseInputViewController: UIViewController {
@@ -337,7 +337,7 @@ class LicenseInputViewController: UIViewController {
         activityIndicator.startAnimating()
         
         if code.isEmpty {
-            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
+            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil, intervalUpload: nil)
             return
         }
         fetchPartnerGroupId(for: code)
@@ -371,7 +371,7 @@ class LicenseInputViewController: UIViewController {
         activityIndicator.startAnimating()
         
         if code.isEmpty {
-            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
+            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil, intervalUpload: nil)
             return
         }
         fetchPartnerGroupId(for: code)
@@ -403,7 +403,7 @@ class LicenseInputViewController: UIViewController {
         guard let url = URL(string: urlString) else {
             self.activityIndicator.stopAnimating()
             self.showToast(message: "Format URL tidak valid")
-            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
+            self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil, intervalUpload: nil)
             return
         }
         
@@ -428,7 +428,7 @@ class LicenseInputViewController: UIViewController {
             guard let strongSelf = self, let data = data, error == nil else {
                 DispatchQueue.main.async { [weak self] in
                     self?.showToast(message: "Gagal terhubung ke server")
-                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
+                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil, intervalUpload: nil)
                 }
                 return
             }
@@ -471,20 +471,25 @@ class LicenseInputViewController: UIViewController {
                     let isHide = licenseData["is_hide"] as? Bool
                     print("🔍 Debug: API Response - is_hide value: \(String(describing: isHide))")
                     
+                    // Extract intervalupload if it exists
+                    let intervalUploadStr = licenseData["intervalupload"] as? String
+                    let intervalUpload = Int(intervalUploadStr ?? "10") ?? 10 // Default 10 seconds
+                    print("🔍 Debug: API Response - intervalupload value: \(String(describing: intervalUpload))")
+                    
                     // If not expired or no expiration date, continue
                     DispatchQueue.main.async { [weak self] in
-                        self?.delegate?.didReceivePartnerGroupId(partnerGroupId, customText: customText, customColor: customColor, cancelTimeout: cancelTimeout, isHide: isHide)
+                        self?.delegate?.didReceivePartnerGroupId(partnerGroupId, customText: customText, customColor: customColor, cancelTimeout: cancelTimeout, isHide: isHide, intervalUpload: intervalUpload)
                     }
                 } else {
                     DispatchQueue.main.async { [weak self] in
                         self?.showToast(message: "Kode aplikasi tidak valid atau tidak ditemukan")
-                        self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
+                        self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil, intervalUpload: nil)
                     }
                 }
             } catch {
                 DispatchQueue.main.async { [weak self] in
                     self?.showToast(message: "Terjadi kesalahan pada data server")
-                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
+                    self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil, intervalUpload: nil)
                 }
             }
         }
