@@ -731,6 +731,10 @@ extension CameraViewController: CameraButtonDelegate {
             self.cameraController.clearLens(willReapply: true)
             DispatchQueue.main.async {
                 let viewController = ImagePreviewViewController(image: image)
+                
+                // Configure presentation style for different screen sizes
+                self.configurePreviewPresentation(viewController)
+                
                 viewController.presentationController?.delegate = self
                 viewController.onDismiss = { [weak self] in
                     self?.cameraController.reapplyCurrentLens()
@@ -792,6 +796,10 @@ extension CameraViewController: CameraButtonDelegate {
                 guard let url = url else { return }
                 self.cameraController.clearLens(willReapply: true)
                 let player = VideoPreviewViewController(videoUrl: url)
+                
+                // Configure presentation style for different screen sizes
+                self.configurePreviewPresentation(player)
+                
                 player.presentationController?.delegate = self
                 player.onDismiss = { [weak self] in
                     self?.cameraController.reapplyCurrentLens()
@@ -820,6 +828,39 @@ extension CameraViewController: CameraButtonDelegate {
 
     private func restoreActiveCameraState() {
         appOrientationDelegate?.unlockOrientation()
+    }
+    
+    /// Configure presentation style for preview view controllers based on device type
+    private func configurePreviewPresentation(_ viewController: PreviewViewController) {
+        // Check if this is a large screen device (iPad)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // For iPad, use custom modal presentation
+            viewController.modalPresentationStyle = .formSheet
+            
+            // Set preferred content size for 9:16 aspect ratio with 80% screen size
+            let screenBounds = UIScreen.main.bounds
+            let maxDimension = min(screenBounds.width, screenBounds.height) * 0.8
+            
+            // Calculate size with 9:16 aspect ratio (portrait)
+            let width = maxDimension
+            let height = maxDimension * (16.0 / 9.0)
+            
+            // Ensure height doesn't exceed 80% of screen height
+            let maxHeight = screenBounds.height * 0.8
+            if height > maxHeight {
+                let adjustedHeight = maxHeight
+                let adjustedWidth = adjustedHeight * (9.0 / 16.0)
+                viewController.preferredContentSize = CGSize(width: adjustedWidth, height: adjustedHeight)
+            } else {
+                viewController.preferredContentSize = CGSize(width: width, height: height)
+            }
+            
+            print("📱 Debug: iPad preview configured - size: \(viewController.preferredContentSize)")
+        } else {
+            // For iPhone, use default fullscreen presentation
+            viewController.modalPresentationStyle = .fullScreen
+            print("📱 Debug: iPhone preview configured - fullscreen")
+        }
     }
 
 }

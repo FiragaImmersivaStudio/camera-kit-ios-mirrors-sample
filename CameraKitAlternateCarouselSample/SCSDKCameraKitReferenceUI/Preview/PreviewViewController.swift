@@ -37,7 +37,7 @@ public class PreviewViewController: UIViewController {
     
     /// Timer for QR code timeout
     private var qrCodeTimeoutTimer: Timer?
-    private var qrCodeTimeoutValue: Int = 20 // 30 seconds timeout for QR code
+    private var qrCodeTimeoutValue: Int = 10 // 30 seconds timeout for QR code
 
     /// Get custom button text from UserDefaults with fallback to default
     private func getButtonText(for key: String, defaultText: String) -> String {
@@ -170,11 +170,13 @@ public class PreviewViewController: UIViewController {
         let label = UILabel()
         label.text = "QR code akan hilang dalam 20 detik"
         label.textColor = .white
-        label.font = UIFont.systemFont(ofSize: 16, weight: .medium)
+        label.font = UIFont.systemFont(ofSize: 32, weight: .medium)
         label.textAlignment = .center
         label.backgroundColor = UIColor.black.withAlphaComponent(0.7)
         label.layer.cornerRadius = 8
         label.clipsToBounds = true
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
         label.isHidden = true
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -240,7 +242,6 @@ public class PreviewViewController: UIViewController {
 
     private func setup() {
         view.backgroundColor = .black
-        setupCloseButton()
         setupUploadButtons()
         setupLoadingIndicator()
         setupOverlayView()
@@ -606,10 +607,11 @@ extension PreviewViewController {
             qrCodeImageView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.7),
             qrCodeImageView.heightAnchor.constraint(equalTo: qrCodeImageView.widthAnchor),
             
-            qrCodeCountdownLabel.topAnchor.constraint(equalTo: qrCodeImageView.topAnchor, constant: -50),
+            qrCodeCountdownLabel.bottomAnchor.constraint(equalTo: qrCodeImageView.topAnchor, constant: -10),
             qrCodeCountdownLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            qrCodeCountdownLabel.widthAnchor.constraint(equalToConstant: 280),
-            qrCodeCountdownLabel.heightAnchor.constraint(equalToConstant: 36),
+            qrCodeCountdownLabel.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 20),
+            qrCodeCountdownLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -20),
+            qrCodeCountdownLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
             
             qrCodeCloseButton.topAnchor.constraint(equalTo: qrCodeImageView.bottomAnchor, constant: 16),
             qrCodeCloseButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -643,7 +645,7 @@ extension PreviewViewController {
         focusedButton = nil
         
         // Reset timeout value and start countdown
-        qrCodeTimeoutValue = 20
+        qrCodeTimeoutValue = 10
         startQRCodeTimeout()
     }
 }

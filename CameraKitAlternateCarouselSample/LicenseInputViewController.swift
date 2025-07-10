@@ -139,6 +139,23 @@ class LicenseInputViewController: UIViewController {
         return button
     }()
     
+    // Track current network task for proper cleanup
+    private var currentNetworkTask: URLSessionDataTask?
+    
+    deinit {
+        // Cleanup timers
+        countdownTimer?.invalidate()
+        inactivityTimer?.invalidate()
+        
+        // Cancel any ongoing network requests
+        currentNetworkTask?.cancel()
+        
+        // Remove observers
+        NotificationCenter.default.removeObserver(self)
+        
+        print("🧹 LicenseInputViewController deinitialized")
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.95, green: 0.94, blue: 0.99, alpha: 1.0)
@@ -150,7 +167,8 @@ class LicenseInputViewController: UIViewController {
         setupInteractionObservers()
         
         // Auto-focus to text field and show keyboard
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self, self.view.window != nil else { return }
             self.textField.becomeFirstResponder()
             if self.isVirtualKeyboardEnabled {
                 self.showVirtualKeyboard()
@@ -229,8 +247,8 @@ class LicenseInputViewController: UIViewController {
         
         // Fade-in animasi pada card
         cardView.alpha = 0
-        UIView.animate(withDuration: 0.7, delay: 0.1, options: [.curveEaseIn], animations: {
-            self.cardView.alpha = 1
+        UIView.animate(withDuration: 0.7, delay: 0.1, options: [.curveEaseIn], animations: { [weak self] in
+            self?.cardView.alpha = 1
         }, completion: nil)
     }
     
@@ -244,11 +262,17 @@ class LicenseInputViewController: UIViewController {
     private func startCountdown() {
         // Matikan timer inaktivitas ketika countdown dimulai
         inactivityTimer?.invalidate()
+        inactivityTimer = nil
+        
         countdownValue = 8
         isCountdownActive = true
         countdownLabel.isHidden = false
         updateCountdownLabel()
-        countdownTimer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(countdownTick), userInfo: nil, repeats: true)
+        
+        countdownTimer?.invalidate()
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            self?.countdownTick()
+        }
     }
 
     private func cancelCountdown() {
@@ -286,6 +310,9 @@ class LicenseInputViewController: UIViewController {
     }
     
     @objc private func submitTapped() {
+        // Prevent multiple submissions
+        guard submitButton.isEnabled else { return }
+        
         // Hilangkan fokus pada semua input
         view.endEditing(true)
         
@@ -317,6 +344,9 @@ class LicenseInputViewController: UIViewController {
     }
     
     @objc private func debugTapped() {
+        // Prevent multiple submissions
+        guard submitButton.isEnabled else { return }
+        
         // Hilangkan fokus pada semua input
         view.endEditing(true)
         
@@ -355,12 +385,16 @@ class LicenseInputViewController: UIViewController {
         )
         
         let okAction = UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             // Re-enable submit button after alert is dismissed
-            self?.submitButton.isEnabled = true
-            self?.submitButton.backgroundColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0) // #F4AB43
+            self.submitButton.isEnabled = true
+            self.submitButton.backgroundColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0) // #F4AB43
         }
         
         alertController.addAction(okAction)
+        
+        // Ensure we're still presented before showing the alert
+        guard !isBeingDismissed && view.window != nil else { return }
         present(alertController, animated: true)
     }
 
@@ -372,12 +406,27 @@ class LicenseInputViewController: UIViewController {
             self.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
             return
         }
+        
+        // Cancel any existing task before starting a new one
+        currentNetworkTask?.cancel()
+        
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                self?.activityIndicator.stopAnimating()
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.activityIndicator.stopAnimating()
+                self.loadingOverlay.isHidden = true
+                
+                // Clear the task reference
+                self.currentNetworkTask = nil
             }
-            guard let data = data, error == nil else {
-                DispatchQueue.main.async {
+            
+            // Check if the request was cancelled
+            if let error = error as NSError?, error.code == NSURLErrorCancelled {
+                return
+            }
+            
+            guard let strongSelf = self, let data = data, error == nil else {
+                DispatchQueue.main.async { [weak self] in
                     self?.showToast(message: "Gagal terhubung ke server")
                     self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
                 }
@@ -395,7 +444,7 @@ class LicenseInputViewController: UIViewController {
                        let expiredAt = ISO8601DateFormatter().date(from: expiredAtString) {
                         let currentDate = Date()
                         if currentDate > expiredAt {
-                            DispatchQueue.main.async {
+                            DispatchQueue.main.async { [weak self] in
                                 // hide loading overlay
                                 self?.loadingOverlay.isHidden = true
                                 self?.activityIndicator.stopAnimating()
@@ -423,22 +472,25 @@ class LicenseInputViewController: UIViewController {
                     print("🔍 Debug: API Response - is_hide value: \(String(describing: isHide))")
                     
                     // If not expired or no expiration date, continue
-                    DispatchQueue.main.async {
+                    DispatchQueue.main.async { [weak self] in
                         self?.delegate?.didReceivePartnerGroupId(partnerGroupId, customText: customText, customColor: customColor, cancelTimeout: cancelTimeout, isHide: isHide)
                     }
                 } else {
-                    DispatchQueue.main.async {
+                    DispatchQueue.main.async { [weak self] in
                         self?.showToast(message: "Kode aplikasi tidak valid atau tidak ditemukan")
                         self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
                     }
                 }
             } catch {
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
                     self?.showToast(message: "Terjadi kesalahan pada data server")
                     self?.delegate?.didReceivePartnerGroupId(nil, customText: nil, customColor: nil, cancelTimeout: nil, isHide: nil)
                 }
             }
         }
+        
+        // Store the task reference for cleanup
+        currentNetworkTask = task
         task.resume()
     }
     
@@ -550,7 +602,9 @@ class LicenseInputViewController: UIViewController {
     // Reset / mulai ulang timer inaktivitas
     private func resetInactivityTimer() {
         inactivityTimer?.invalidate()
-        inactivityTimer = Timer.scheduledTimer(timeInterval: inactivityDuration, target: self, selector: #selector(inactivityTimerFired), userInfo: nil, repeats: false)
+        inactivityTimer = Timer.scheduledTimer(withTimeInterval: inactivityDuration, repeats: false) { [weak self] timer in
+            self?.inactivityTimerFired()
+        }
     }
 
     @objc private func inactivityTimerFired() {
@@ -587,11 +641,12 @@ extension UIViewController {
         
         UIView.animate(withDuration: 0.4, animations: {
             toastLabel.alpha = 1.0
-        }) { _ in
+        }) { [weak toastLabel] _ in
+            guard let toastLabel = toastLabel else { return }
             UIView.animate(withDuration: 0.4, delay: duration, options: .curveEaseOut, animations: {
                 toastLabel.alpha = 0.0
-            }) { _ in
-                toastLabel.removeFromSuperview()
+            }) { [weak toastLabel] _ in
+                toastLabel?.removeFromSuperview()
             }
         }
     }
