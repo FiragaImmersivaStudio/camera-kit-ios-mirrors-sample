@@ -139,6 +139,14 @@ class LicenseInputViewController: UIViewController {
         return button
     }()
     
+    private let hideLogoButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "eye.slash.fill"), for: .normal)
+        button.tintColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
     // Track current network task for proper cleanup
     private var currentNetworkTask: URLSessionDataTask?
     
@@ -160,9 +168,11 @@ class LicenseInputViewController: UIViewController {
         super.viewDidLoad()
         view.backgroundColor = UIColor(red: 0.95, green: 0.94, blue: 0.99, alpha: 1.0)
         setupLayout()
+        loadLogoVisibilityState() // Load state after layout but before other setup
         setupVirtualKeyboard()
         submitButton.addTarget(self, action: #selector(submitTapped), for: .touchUpInside)
         debugButton.addTarget(self, action: #selector(debugTapped), for: .touchUpInside)
+        hideLogoButton.addTarget(self, action: #selector(hideLogoTapped), for: .touchUpInside)
         setupAutofillAndCountdown()
         setupInteractionObservers()
         
@@ -182,6 +192,7 @@ class LicenseInputViewController: UIViewController {
         view.addSubview(appNameLabel)
         view.addSubview(cardView)
         view.addSubview(debugButton)
+        view.addSubview(hideLogoButton)
         view.addSubview(keyboardView)
         cardView.addSubview(instructionLabel)
         cardView.addSubview(textField)
@@ -195,6 +206,11 @@ class LicenseInputViewController: UIViewController {
             debugButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             debugButton.widthAnchor.constraint(equalToConstant: 44),
             debugButton.heightAnchor.constraint(equalToConstant: 44),
+            
+            hideLogoButton.topAnchor.constraint(equalTo: debugButton.bottomAnchor, constant: 8),
+            hideLogoButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            hideLogoButton.widthAnchor.constraint(equalToConstant: 44),
+            hideLogoButton.heightAnchor.constraint(equalToConstant: 44),
             
             logoImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 32),
             logoImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -630,6 +646,56 @@ class LicenseInputViewController: UIViewController {
         if !isCountdownActive {
             startCountdown()
         }
+    }
+    
+    @objc private func hideLogoTapped() {
+        toggleLogoVisibility()
+    }
+    
+    private func toggleLogoVisibility() {
+        let isCurrentlyHidden = logoImageView.isHidden
+        let newHiddenState = !isCurrentlyHidden
+        
+        // Toggle visibility
+        UIView.animate(withDuration: 0.3) { [weak self] in
+            self?.logoImageView.alpha = newHiddenState ? 0.0 : 1.0
+            self?.appNameLabel.alpha = newHiddenState ? 0.0 : 1.0
+        } completion: { [weak self] _ in
+            self?.logoImageView.isHidden = newHiddenState
+            self?.appNameLabel.isHidden = newHiddenState
+        }
+        
+        // Update button icon
+        let iconName = newHiddenState ? "eye.fill" : "eye.slash.fill"
+        hideLogoButton.setImage(UIImage(systemName: iconName), for: .normal)
+        
+        // Save state to UserDefaults
+        UserDefaults.standard.set(newHiddenState, forKey: "isLogoHidden")
+        UserDefaults.standard.synchronize()
+        
+        print("🔍 Debug: Logo visibility toggled - Hidden: \(newHiddenState)")
+    }
+    
+    private func loadLogoVisibilityState() {
+        let isHidden = UserDefaults.standard.bool(forKey: "isLogoHidden")
+        
+        if isHidden {
+            // Hide logo and text immediately without animation on app startup
+            logoImageView.isHidden = true
+            logoImageView.alpha = 0.0
+            appNameLabel.isHidden = true
+            appNameLabel.alpha = 0.0
+            hideLogoButton.setImage(UIImage(systemName: "eye.fill"), for: .normal)
+        } else {
+            // Show logo and text (default state)
+            logoImageView.isHidden = false
+            logoImageView.alpha = 1.0
+            appNameLabel.isHidden = false
+            appNameLabel.alpha = 1.0
+            hideLogoButton.setImage(UIImage(systemName: "eye.slash.fill"), for: .normal)
+        }
+        
+        print("🔍 Debug: Loaded logo visibility state - Hidden: \(isHidden)")
     }
 }
 
