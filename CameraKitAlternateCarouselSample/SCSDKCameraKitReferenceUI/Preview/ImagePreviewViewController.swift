@@ -66,7 +66,13 @@ public class ImagePreviewViewController: PreviewViewController {
         imageView.isHidden = false // Ensure image remains visible
         
         let boundary = UUID().uuidString
-        var request = URLRequest(url: URL(string: "https://file.firaga.studio/api/upload")!)
+        
+        // Use custom upload API URL if available, otherwise use default
+        let defaultUploadUrl = "https://file.firaga.studio/api/upload"
+        let uploadUrl = UserDefaults.standard.string(forKey: "uploadApiUrl") ?? defaultUploadUrl
+        print("🔍 Debug: Using upload URL: \(uploadUrl)")
+        
+        var request = URLRequest(url: URL(string: uploadUrl)!)
         request.httpMethod = "POST"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         

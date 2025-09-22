@@ -476,6 +476,19 @@ class LicenseInputViewController: UIViewController {
                     let intervalUpload = Int(intervalUploadStr ?? "10") ?? 10 // Default 10 seconds
                     print("🔍 Debug: API Response - intervalupload value: \(String(describing: intervalUpload))")
                     
+                    // Extract upload_api if it exists
+                    let uploadApi = licenseData["upload_api"] as? String
+                    print("🔍 Debug: API Response - upload_api value: \(String(describing: uploadApi))")
+                    
+                    // Store upload_api in UserDefaults for access by preview controllers
+                    if let uploadApi = uploadApi, !uploadApi.isEmpty {
+                        UserDefaults.standard.set(uploadApi, forKey: "uploadApiUrl")
+                        print("🔍 Debug: Stored custom upload API URL: \(uploadApi)")
+                    } else {
+                        UserDefaults.standard.removeObject(forKey: "uploadApiUrl")
+                        print("🔍 Debug: No custom upload API URL provided, will use default")
+                    }
+                    
                     // If not expired or no expiration date, continue
                     DispatchQueue.main.async { [weak self] in
                         self?.delegate?.didReceivePartnerGroupId(partnerGroupId, customText: customText, customColor: customColor, cancelTimeout: cancelTimeout, isHide: isHide, intervalUpload: intervalUpload)
