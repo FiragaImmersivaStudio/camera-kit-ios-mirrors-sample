@@ -497,6 +497,78 @@ open class CameraController: NSObject, LensRepositoryGroupObserver, LensPrefetch
     fileprivate var isAdjustingExposureObservation: NSKeyValueObservation?
 
     fileprivate var isAdjustingFocusObservation: NSKeyValueObservation?
+
+    private enum UserDefaultsKeys {
+        static let frameOrientation = "camera_frame_orientation"
+        static let position = "camera_position"
+        static let isVideoMirrored = "camera_is_video_mirrored"
+        static let videoOrientation = "camera_video_orientation"
+    }
+    
+    /// Updates the frame orientation of the camera
+    /// - Parameter orientation: The new frame orientation
+    public func updateFrameOrientation(_ orientation: AVCaptureVideoOrientation) {
+        if let input = cameraKit.activeInput as? MirrorAVSessionInput {
+            input.frameOrientation = orientation
+            UserDefaults.standard.set(orientation.rawValue, forKey: UserDefaultsKeys.frameOrientation)
+        }
+    }
+    
+    /// Updates the camera position
+    /// - Parameter position: The new camera position
+    public func updatePosition(_ position: AVCaptureDevice.Position) {
+        if let input = cameraKit.activeInput as? MirrorAVSessionInput {
+            input.position = position
+            UserDefaults.standard.set(position.rawValue, forKey: UserDefaultsKeys.position)
+        }
+    }
+    
+    /// Updates the video mirror setting
+    /// - Parameter isMirrored: Whether the video should be mirrored
+    public func updateVideoMirror(_ isMirrored: Bool) {
+        if let input = cameraKit.activeInput as? MirrorAVSessionInput {
+            input.isVideoMirrored = isMirrored
+            UserDefaults.standard.set(isMirrored, forKey: UserDefaultsKeys.isVideoMirrored)
+        }
+    }
+    
+    /// Updates the video orientation
+    /// - Parameter orientation: The new video orientation
+    public func updateVideoOrientation(_ orientation: AVCaptureVideoOrientation) {
+        if let input = cameraKit.activeInput as? MirrorAVSessionInput {
+            input.setVideoOrientation(orientation)
+            UserDefaults.standard.set(orientation.rawValue, forKey: UserDefaultsKeys.videoOrientation)
+        }
+    }
+    
+    /// Loads saved camera settings from UserDefaults
+    public func loadSavedSettings() {
+        if let input = cameraKit.activeInput as? MirrorAVSessionInput {
+            // Load frame orientation
+            if let frameOrientationRaw = UserDefaults.standard.object(forKey: UserDefaultsKeys.frameOrientation) as? Int,
+               let frameOrientation = AVCaptureVideoOrientation(rawValue: frameOrientationRaw) {
+                input.frameOrientation = frameOrientation
+            }
+            
+            // Load position
+            if let positionRaw = UserDefaults.standard.object(forKey: UserDefaultsKeys.position) as? Int,
+               let position = AVCaptureDevice.Position(rawValue: positionRaw) {
+                input.position = position
+            }
+            
+            // Load video mirror
+            if UserDefaults.standard.object(forKey: UserDefaultsKeys.isVideoMirrored) != nil {
+                let isMirrored = UserDefaults.standard.bool(forKey: UserDefaultsKeys.isVideoMirrored)
+                input.isVideoMirrored = isMirrored
+            }
+            
+            // Load video orientation
+            if let videoOrientationRaw = UserDefaults.standard.object(forKey: UserDefaultsKeys.videoOrientation) as? Int,
+               let videoOrientation = AVCaptureVideoOrientation(rawValue: videoOrientationRaw) {
+                input.setVideoOrientation(videoOrientation)
+            }
+        }
+    }
 }
 
 // MARK: Camera Pipeline Configuration

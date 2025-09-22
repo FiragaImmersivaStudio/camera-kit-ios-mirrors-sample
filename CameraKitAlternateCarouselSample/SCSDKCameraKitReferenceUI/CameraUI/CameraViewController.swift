@@ -107,6 +107,16 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
     private var maxRecordingDuration: TimeInterval = 0 // Will be set from userInfo
     private var isRecording: Bool = false // Flag untuk melacak status recording
 
+    /// Flag untuk mode debug
+    public var isDebugMode: Bool = false {
+        didSet {
+            cameraView.updateFlipButton(isInFullScreen: true)
+        }
+    }
+    
+    /// Flag to track if PreviewViewController is currently active
+    private var isPreviewActive: Bool = false
+
     override open func loadView() {
         view = cameraView
     }
@@ -115,6 +125,10 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
         super.viewDidLoad()
         self.setNeedsStatusBarAppearanceUpdate()
         setup()
+        setupCameraSettings()
+        
+        // Update watermark visibility based on license data
+        cameraView.updateWatermarkVisibility()
         
         // Add countdown label to view
         view.addSubview(countdownLabel)
@@ -139,10 +153,66 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
 
     override open func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        cameraController.loadSavedSettings()
+        // Add keyboard observer
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidShow), name: UIResponder.keyboardDidShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardDidHide), name: UIResponder.keyboardDidHideNotification, object: nil)
+        // Add preview state observers
+        NotificationCenter.default.addObserver(self, selector: #selector(previewDidAppear), name: .previewDidAppear, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(previewDidDisappear), name: .previewDidDisappear, object: nil)
+        // Add key press observer
+        becomeFirstResponder()
+    }
+
+    override open var canBecomeFirstResponder: Bool {
+        return true
+    }
+
+    @objc private func keyboardDidShow(notification: Notification) {}
+    @objc private func keyboardDidHide(notification: Notification) {}
+    
+    @objc private func previewDidAppear(notification: Notification) {
+        isPreviewActive = true
+        print("🔍 Debug: Preview appeared, disabling space key in camera")
+    }
+    
+    @objc private func previewDidDisappear(notification: Notification) {
+        isPreviewActive = false
+        print("🔍 Debug: Preview disappeared, enabling space key in camera")
+        // Become first responder again to handle key presses
+        becomeFirstResponder()
+        print("🔍 Debug: CameraViewController became first responder again: \(isFirstResponder)")
+    }
+
+    // Handle key press (spasi)
+    override open func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        super.pressesBegan(presses, with: event)
+        
+        print("🔍 Debug: CameraViewController pressesBegan called, isPreviewActive: \(isPreviewActive)")
+        
+        // Skip space key handling if preview is active
+        if isPreviewActive {
+            print("🔍 Debug: Skipping R key handling - preview is active")
+            return
+        }
+        
+        for press in presses {
+            if press.key?.keyCode == .keyboardR {
+                // Set variable jika sedang di CameraKit
+                CaptureRemoteApiService.isButtonPressedWhileOnLens = true
+                // print debug
+                print("🔍 Debug: 'R' key pressed while on lens")
+            }
+        }
     }
 
     override open func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        // Remove observers
+        NotificationCenter.default.removeObserver(self, name: .previewDidAppear, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .previewDidDisappear, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardDidShowNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: UIResponder.keyboardDidHideNotification, object: nil)
     }
 
     // MARK: Init
@@ -208,6 +278,9 @@ open class CameraViewController: UIViewController, CameraControllerUIDelegate {
         cameraController.applyLens(lens) { [weak self] success in
             guard let strongSelf = self else { return }
             if success {
+                // Reset variable setiap kali lens di-apply
+                CaptureRemoteApiService.isButtonPressedWhileOnLens = false
+                print("🔍 Debug: Reset variable setiap kali lens di-apply")
                 print("\(lens.name ?? "Unnamed") (\(lens.id)) Applied")
 
                 DispatchQueue.main.async {
@@ -332,6 +405,14 @@ extension CameraViewController {
             name: NSNotification.Name("TriggerCapture"),
             object: nil
         )
+        
+        // Register for lens capture stop notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleCaptureStop(_:)),
+            name: NSNotification.Name("StopCapture"),
+            object: nil
+        )
     }
     
     /// Handle capture triggers from lens
@@ -354,8 +435,8 @@ extension CameraViewController {
                 let durationString = userInfo["duration"] as? String
                 let duration = TimeInterval(durationString ?? "10.0") ?? 10.0
                 
-                // Pastikan durasi berada dalam batasan yang wajar (antara 3-30 detik)
-                let finalDuration = min(max(duration, 3.0), 30.0)
+                // Pastikan durasi berada dalam batasan yang wajar (antara 3-59 detik)
+                let finalDuration = min(max(duration, 3.0), 59.0)
                 
                 print("Received video recording request with duration: \(finalDuration) seconds")
                 
@@ -397,14 +478,26 @@ extension CameraViewController {
         }
     }
 
+    /// Handle capture stop from lens
+    @objc private func handleCaptureStop(_ notification: Notification) {
+        // Only stop if we're currently recording
+        if isRecording {
+            print("Stopping video recording from lens request")
+            cameraButtonHoldEnded(cameraView.cameraButton)
+        } else {
+            print("No active recording to stop")
+        }
+    }
+
     /// Configures the target actions and delegates needed for the view controller to function
     fileprivate func setupActions() {
         let singleTap = UITapGestureRecognizer(target: self, action: #selector(handleSingleTap(sender:)))
         cameraView.previewView.addGestureRecognizer(singleTap)
 
-        let doubleTap = UITapGestureRecognizer(target: self, action: #selector(flip(sender:)))
-        doubleTap.numberOfTapsRequired = 2
-        cameraView.previewView.addGestureRecognizer(doubleTap)
+        // Double tap gesture recognizer for camera flip is disabled
+        // let doubleTap = UITapGestureRecognizer(target: self, action: #selector(flip(sender:)))
+        // doubleTap.numberOfTapsRequired = 2
+        // cameraView.previewView.addGestureRecognizer(doubleTap)
 
         let pinchGestureRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(zoom(sender:)))
         cameraView.previewView.addGestureRecognizer(pinchGestureRecognizer)
@@ -422,7 +515,26 @@ extension CameraViewController {
         lensPickerView.performInitialSelection()
 
         self.cameraView.cameraButton.delegate = self
-        cameraView.cameraButton.allowWhileRecording = [doubleTap, pinchGestureRecognizer]
+        // cameraView.cameraButton.allowWhileRecording = [doubleTap, pinchGestureRecognizer]
+        cameraView.cameraButton.allowWhileRecording = [pinchGestureRecognizer]
+    }
+
+    private func setupCameraSettings() {
+        cameraView.cameraSettingsView.onFrameOrientationChanged = { [weak self] orientation in
+            self?.cameraController.updateFrameOrientation(orientation)
+        }
+        
+        cameraView.cameraSettingsView.onPositionChanged = { [weak self] position in
+            self?.cameraController.updatePosition(position)
+        }
+        
+        cameraView.cameraSettingsView.onMirrorChanged = { [weak self] isMirrored in
+            self?.cameraController.updateVideoMirror(isMirrored)
+        }
+        
+        cameraView.cameraSettingsView.onVideoOrientationChanged = { [weak self] orientation in
+            self?.cameraController.updateVideoOrientation(orientation)
+        }
     }
 
 }
@@ -598,7 +710,9 @@ extension CameraViewController: LensPickerViewControllerDelegate, LensPickerView
             self.cameraView.clearLensView.isHidden = self.cameraController.currentLens == nil
             self.cameraView.cameraButton.isHidden = true
             self.cameraView.lensPickerButton.isHidden = false
-            cameraView.snapWatermark.isHidden = false
+            
+            // Update watermark visibility based on license data instead of hard-coded value
+            cameraView.updateWatermarkVisibility()
 
             isInFullFrame = true
         }
@@ -617,6 +731,10 @@ extension CameraViewController: CameraButtonDelegate {
             self.cameraController.clearLens(willReapply: true)
             DispatchQueue.main.async {
                 let viewController = ImagePreviewViewController(image: image)
+                
+                // Configure presentation style for different screen sizes
+                self.configurePreviewPresentation(viewController)
+                
                 viewController.presentationController?.delegate = self
                 viewController.onDismiss = { [weak self] in
                     self?.cameraController.reapplyCurrentLens()
@@ -678,6 +796,10 @@ extension CameraViewController: CameraButtonDelegate {
                 guard let url = url else { return }
                 self.cameraController.clearLens(willReapply: true)
                 let player = VideoPreviewViewController(videoUrl: url)
+                
+                // Configure presentation style for different screen sizes
+                self.configurePreviewPresentation(player)
+                
                 player.presentationController?.delegate = self
                 player.onDismiss = { [weak self] in
                     self?.cameraController.reapplyCurrentLens()
@@ -706,6 +828,39 @@ extension CameraViewController: CameraButtonDelegate {
 
     private func restoreActiveCameraState() {
         appOrientationDelegate?.unlockOrientation()
+    }
+    
+    /// Configure presentation style for preview view controllers based on device type
+    private func configurePreviewPresentation(_ viewController: PreviewViewController) {
+        // Check if this is a large screen device (iPad)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // For iPad, use custom modal presentation
+            viewController.modalPresentationStyle = .formSheet
+            
+            // Set preferred content size for 9:16 aspect ratio with 80% screen size
+            let screenBounds = UIScreen.main.bounds
+            let maxDimension = min(screenBounds.width, screenBounds.height) * 0.8
+            
+            // Calculate size with 9:16 aspect ratio (portrait)
+            let width = maxDimension
+            let height = maxDimension * (16.0 / 9.0)
+            
+            // Ensure height doesn't exceed 80% of screen height
+            let maxHeight = screenBounds.height * 0.8
+            if height > maxHeight {
+                let adjustedHeight = maxHeight
+                let adjustedWidth = adjustedHeight * (9.0 / 16.0)
+                viewController.preferredContentSize = CGSize(width: adjustedWidth, height: adjustedHeight)
+            } else {
+                viewController.preferredContentSize = CGSize(width: width, height: height)
+            }
+            
+            print("📱 Debug: iPad preview configured - size: \(viewController.preferredContentSize)")
+        } else {
+            // For iPhone, use default fullscreen presentation
+            viewController.modalPresentationStyle = .fullScreen
+            print("📱 Debug: iPhone preview configured - fullscreen")
+        }
     }
 
 }
@@ -819,8 +974,8 @@ extension CameraViewController {
 extension CameraViewController {
     public override var keyCommands: [UIKeyCommand]? {
         return [
-            UIKeyCommand(input: "n", modifierFlags: [], action: #selector(handlePhotoKey(_:))),
-            UIKeyCommand(input: "m", modifierFlags: [], action: #selector(handleRecordKey(_:)))
+            // UIKeyCommand(input: "n", modifierFlags: [], action: #selector(handlePhotoKey(_:))), // Dinonaktifkan: shortcut keyboard 'n' untuk foto
+            // UIKeyCommand(input: "m", modifierFlags: [], action: #selector(handleRecordKey(_:))) // Dinonaktifkan: shortcut keyboard 'm' untuk rekam video
         ]
     }
     
@@ -839,4 +994,10 @@ extension CameraViewController {
             cameraButtonHoldBegan(cameraView.cameraButton)
         }
     }
+}
+
+// MARK: Notification Names Extension
+extension Notification.Name {
+    static let previewDidAppear = Notification.Name("previewDidAppear")
+    static let previewDidDisappear = Notification.Name("previewDidDisappear")
 }

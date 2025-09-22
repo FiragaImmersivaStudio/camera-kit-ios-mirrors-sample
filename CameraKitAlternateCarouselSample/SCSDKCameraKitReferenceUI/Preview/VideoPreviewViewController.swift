@@ -66,6 +66,12 @@ public class VideoPreviewViewController: PreviewViewController {
     // MARK: Action Overrides
 
     override func uploadPreview() {
+        // Validate upload interval before proceeding
+        guard validateUploadInterval() else {
+            print("🚫 Video Upload blocked due to interval validation")
+            return
+        }
+        
         do {
             let videoData = try Data(contentsOf: videoUrl)
             
@@ -77,6 +83,9 @@ public class VideoPreviewViewController: PreviewViewController {
             request.httpMethod = "POST"
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
             
+            // Get saved app code from UserDefaults
+            let appCode = UserDefaults.standard.string(forKey: "savedAppCode") ?? ""
+            
             var body = Data()
             body.append("--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"file\"; filename=\"video.mp4\"\r\n".data(using: .utf8)!)
@@ -84,7 +93,7 @@ public class VideoPreviewViewController: PreviewViewController {
             body.append(videoData)
             body.append("\r\n--\(boundary)\r\n".data(using: .utf8)!)
             body.append("Content-Disposition: form-data; name=\"group\"\r\n\r\n".data(using: .utf8)!)
-            body.append("GUGU".data(using: .utf8)!)
+            body.append(appCode.data(using: .utf8)!)
             body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
             
             request.httpBody = body
