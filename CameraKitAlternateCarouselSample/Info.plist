@@ -38,6 +38,25 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>PlaceIcon</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>PlaceIcon29</string>
+					<string>PlaceIcon40</string>
+					<string>PlaceIcon58</string>
+					<string>PlaceIcon80</string>
+					<string>PlaceIcon87</string>
+					<string>PlaceIcon120</string>
+					<string>PlaceIcon180</string>
+				</array>
+			</dict>
+		</dict>
+	</dict>
 	<key>LSApplicationCategoryType</key>
 	<string></string>
 	<key>LSApplicationQueriesSchemes</key>

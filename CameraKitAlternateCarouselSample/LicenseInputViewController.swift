@@ -147,6 +147,14 @@ class LicenseInputViewController: UIViewController {
         return button
     }()
     
+    private let iconSwitchButton: UIButton = {
+        let button = UIButton(type: .system)
+        button.setImage(UIImage(systemName: "app.badge"), for: .normal)
+        button.tintColor = UIColor(red: 0.96, green: 0.67, blue: 0.26, alpha: 1.0)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }()
+    
     // Track current network task for proper cleanup
     private var currentNetworkTask: URLSessionDataTask?
     
@@ -169,10 +177,12 @@ class LicenseInputViewController: UIViewController {
         view.backgroundColor = UIColor(red: 0.95, green: 0.94, blue: 0.99, alpha: 1.0)
         setupLayout()
         loadLogoVisibilityState() // Load state after layout but before other setup
+        loadAppIconState() // Load app icon state
         setupVirtualKeyboard()
         submitButton.addTarget(self, action: #selector(submitTapped), for: .touchUpInside)
         debugButton.addTarget(self, action: #selector(debugTapped), for: .touchUpInside)
         hideLogoButton.addTarget(self, action: #selector(hideLogoTapped), for: .touchUpInside)
+        iconSwitchButton.addTarget(self, action: #selector(iconSwitchTapped), for: .touchUpInside)
         setupAutofillAndCountdown()
         setupInteractionObservers()
         
@@ -193,6 +203,7 @@ class LicenseInputViewController: UIViewController {
         view.addSubview(cardView)
         view.addSubview(debugButton)
         view.addSubview(hideLogoButton)
+        view.addSubview(iconSwitchButton)
         view.addSubview(keyboardView)
         cardView.addSubview(instructionLabel)
         cardView.addSubview(textField)
@@ -206,6 +217,11 @@ class LicenseInputViewController: UIViewController {
             debugButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             debugButton.widthAnchor.constraint(equalToConstant: 44),
             debugButton.heightAnchor.constraint(equalToConstant: 44),
+            
+            iconSwitchButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            iconSwitchButton.trailingAnchor.constraint(equalTo: debugButton.leadingAnchor, constant: -8),
+            iconSwitchButton.widthAnchor.constraint(equalToConstant: 44),
+            iconSwitchButton.heightAnchor.constraint(equalToConstant: 44),
             
             hideLogoButton.topAnchor.constraint(equalTo: debugButton.bottomAnchor, constant: 8),
             hideLogoButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
@@ -696,6 +712,72 @@ class LicenseInputViewController: UIViewController {
         }
         
         print("🔍 Debug: Loaded logo visibility state - Hidden: \(isHidden)")
+    }
+    
+    @objc private func iconSwitchTapped() {
+        switchAppIcon()
+    }
+    
+    private func switchAppIcon() {
+        // Check if alternate icons are supported
+        guard UIApplication.shared.supportsAlternateIcons else {
+            print("🚫 Alternate icons are not supported on this device")
+            showToast(message: "Alternate icons tidak didukung pada perangkat ini")
+            return
+        }
+        
+        let currentIconName = UIApplication.shared.alternateIconName
+        print("🔍 Debug: Current app icon: \(currentIconName ?? "AppIcon (default)")")
+        
+        let newIconName: String?
+        let buttonIconName: String
+        
+        if currentIconName == nil || currentIconName == "AppIcon" {
+            // Switch to PlaceIcon
+            newIconName = "PlaceIcon"
+            buttonIconName = "app.badge.fill"
+            print("🔄 Switching to PlaceIcon...")
+        } else {
+            // Switch back to AppIcon (default)
+            newIconName = nil // nil means default icon
+            buttonIconName = "app.badge"
+            print("🔄 Switching to AppIcon (default)...")
+        }
+        
+        UIApplication.shared.setAlternateIconName(newIconName) { [weak self] error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("🚫 Failed to change app icon: \(error.localizedDescription)")
+                    self?.showToast(message: "Gagal mengganti ikon aplikasi")
+                } else {
+                    // Update button icon to reflect current state
+                    self?.iconSwitchButton.setImage(UIImage(systemName: buttonIconName), for: .normal)
+                    
+                    // Save current icon state to UserDefaults
+                    UserDefaults.standard.set(newIconName, forKey: "currentAppIcon")
+                    UserDefaults.standard.synchronize()
+                    
+                    let iconDisplayName = newIconName ?? "AppIcon"
+                    print("🎯 Successfully changed app icon to: \(iconDisplayName)")
+                    self?.showToast(message: "Ikon aplikasi berhasil diubah ke \(iconDisplayName)")
+                }
+            }
+        }
+    }
+    
+    private func loadAppIconState() {
+        // Load saved icon state and update button appearance
+        let savedIconName = UserDefaults.standard.string(forKey: "currentAppIcon")
+        let currentIconName = UIApplication.shared.alternateIconName
+        
+        // Determine button icon based on current app icon
+        if currentIconName == nil || currentIconName == "AppIcon" {
+            iconSwitchButton.setImage(UIImage(systemName: "app.badge"), for: .normal)
+        } else {
+            iconSwitchButton.setImage(UIImage(systemName: "app.badge.fill"), for: .normal)
+        }
+        
+        print("🔍 Debug: Loaded app icon state - Current: \(currentIconName ?? "AppIcon")")
     }
 }
 
